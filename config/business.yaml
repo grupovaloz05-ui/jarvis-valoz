@@ -1,0 +1,24 @@
+# Configuración del negocio — Generado por AgentKit
+negocio:
+  nombre: "Valoz Digital"
+  descripcion: >
+    Valoz Digital ayuda a empresas a captar, atender y convertir más clientes mediante
+    agentes de IA, páginas web profesionales y contenido para redes sociales. Crean
+    automatizaciones para WhatsApp e Instagram que responden dudas, califican prospectos,
+    recopilan datos y canalizan al cliente cuando está listo para cotizar o comprar.
+    También diseñan páginas web y landing pages enfocadas en generar confianza y aumentar
+    conversiones. Ofrecen paquetes de posts para mejorar la presencia visual en redes sociales.
+    Sus clientes ideales son empresas locales, emprendedores y negocios que quieren verse
+    más profesionales, responder más rápido y generar un flujo constante de oportunidades de venta.
+  horario: "Lunes a domingo, 6:00 AM a 5:00 AM"
+
+agente:
+  nombre: "Jarvis"
+  tono: "Profesional, amigable, persuasivo y empático"
+  casos_de_uso:
+    - "Responder preguntas frecuentes sobre servicios y precios"
+    - "Agendar citas o reuniones con el equipo"
+
+metadata:
+  creado: "2026-05-30"
+  version: "1.0"

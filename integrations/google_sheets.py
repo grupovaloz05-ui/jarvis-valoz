@@ -1,5 +1,4 @@
 # integrations/google_sheets.py — Integración con Google Sheets para CRM de leads
-# Generado por AgentKit
 
 import asyncio
 import os
@@ -16,12 +15,10 @@ ENCABEZADOS = [
     "Resumen de conversación", "Estado", "Próximo paso",
 ]
 
-# Ancho de columnas en píxeles (mismo orden que ENCABEZADOS)
 ANCHOS_COLUMNAS = [160, 150, 120, 180, 150, 220, 110, 90, 340, 140, 220]
 
 
 def esta_configurado() -> bool:
-    """Retorna True si todas las variables de Google Sheets están presentes."""
     return bool(
         os.getenv("GOOGLE_SHEET_ID")
         and os.getenv("GOOGLE_SERVICE_ACCOUNT_EMAIL")
@@ -30,28 +27,36 @@ def esta_configurado() -> bool:
 
 
 def _get_gc():
-    """Retorna cliente gspread autenticado via cuenta de servicio."""
     import gspread
-
-    email = os.getenv("GOOGLE_SERVICE_ACCOUNT_EMAIL", "")
-    private_key = os.getenv("GOOGLE_PRIVATE_KEY", "").replace("\\n", "\n")
-
     info = {
         "type": "service_account",
         "project_id": "agentkit",
         "private_key_id": "key",
-        "client_email": email,
-        "private_key": private_key,
+        "client_email": os.getenv("GOOGLE_SERVICE_ACCOUNT_EMAIL", ""),
+        "private_key": os.getenv("GOOGLE_PRIVATE_KEY", "").replace("\\n", "\n"),
         "token_uri": "https://oauth2.googleapis.com/token",
     }
     return gspread.service_account_from_dict(info)
 
 
-def _aplicar_formato(ws) -> None:
+def _limpiar_reglas_condicionales(ws) -> None:
+    """Elimina todas las reglas de formato condicional existentes para evitar acumulación."""
+    sheet_id = ws.id
+    while True:
+        try:
+            ws.spreadsheet.batch_update({"requests": [
+                {"deleteConditionalFormatRule": {"sheetId": sheet_id, "index": 0}}
+            ]})
+        except Exception:
+            break
+
+
+def aplicar_formato_sheet(ws) -> None:
     """
-    Aplica formato profesional al Sheet en 3 grupos independientes.
-    Si un grupo falla, los demás continúan y el guardado del lead nunca se interrumpe.
+    Aplica formato profesional a la hoja. Se llama después de cada guardado de lead.
+    Cada grupo falla de forma independiente — el guardado nunca se interrumpe por el formato.
     """
+    logger.info("Aplicando formato a Google Sheets")
     sheet_id = ws.id
     num_cols = len(ENCABEZADOS)
     col_fin = chr(64 + num_cols)  # 'K' para 11 columnas
@@ -76,11 +81,10 @@ def _aplicar_formato(ws) -> None:
     except Exception as e:
         logger.warning(f"[Formato] No se pudo aplicar estilo a encabezados: {e}")
 
-    # ── Grupo 2: Columnas + ajuste de texto + bordes ─────────────────────────
+    # ── Grupo 2: Ancho de columnas + ajuste de texto + bordes ───────────────
     try:
         estructural = []
 
-        # Ancho de columnas
         for i, ancho in enumerate(ANCHOS_COLUMNAS):
             estructural.append({
                 "updateDimensionProperties": {
@@ -90,7 +94,7 @@ def _aplicar_formato(ws) -> None:
                 }
             })
 
-        # Ajuste de texto (wrap) en Resumen (col I, idx 8) y Próximo paso (col K, idx 10)
+        # WRAP en Resumen (col I, idx 8) y Próximo paso (col K, idx 10)
         for col_idx in [8, 10]:
             estructural.append({
                 "repeatCell": {
@@ -100,11 +104,10 @@ def _aplicar_formato(ws) -> None:
                 }
             })
 
-        # Bordes en toda la tabla (filas 1 a 1000)
-        color_borde_ext  = {"red": 0.60, "green": 0.60, "blue": 0.60}
-        color_borde_int  = {"red": 0.85, "green": 0.85, "blue": 0.85}
-        estilo_ext  = {"style": "SOLID", "width": 1, "color": color_borde_ext}
-        estilo_int  = {"style": "SOLID", "width": 1, "color": color_borde_int}
+        color_ext = {"red": 0.60, "green": 0.60, "blue": 0.60}
+        color_int = {"red": 0.85, "green": 0.85, "blue": 0.85}
+        estilo_ext = {"style": "SOLID", "width": 1, "color": color_ext}
+        estilo_int = {"style": "SOLID", "width": 1, "color": color_int}
         estructural.append({
             "updateBorders": {
                 "range": {"sheetId": sheet_id, "startRowIndex": 0, "endRowIndex": 1000, "startColumnIndex": 0, "endColumnIndex": num_cols},
@@ -118,14 +121,16 @@ def _aplicar_formato(ws) -> None:
     except Exception as e:
         logger.warning(f"[Formato] No se pudo aplicar formato estructural: {e}")
 
-    # ── Grupo 3: Colores alternos + formato condicional ──────────────────────
+    # ── Grupo 3: Colores alternos + formato condicional ─────────────────────
     try:
+        _limpiar_reglas_condicionales(ws)
+
         visual = []
-        datos_range  = {"sheetId": sheet_id, "startRowIndex": 1, "endRowIndex": 1000, "startColumnIndex": 0, "endColumnIndex": num_cols}
+        datos_range    = {"sheetId": sheet_id, "startRowIndex": 1, "endRowIndex": 1000, "startColumnIndex": 0, "endColumnIndex": num_cols}
         urgencia_range = {"sheetId": sheet_id, "startRowIndex": 1, "endRowIndex": 1000, "startColumnIndex": 7, "endColumnIndex": 8}
         estado_range   = {"sheetId": sheet_id, "startRowIndex": 1, "endRowIndex": 1000, "startColumnIndex": 9, "endColumnIndex": 10}
 
-        # Colores alternos (filas pares)
+        # Filas alternas
         visual.append({
             "addConditionalFormatRule": {
                 "rule": {
@@ -139,7 +144,7 @@ def _aplicar_formato(ws) -> None:
             }
         })
 
-        # Formato condicional: Urgencia (columna H)
+        # Urgencia: Alta=rojo, Media=amarillo, Baja=verde
         for idx, (valor, color) in enumerate([
             ("Alta",  {"red": 1.00, "green": 0.80, "blue": 0.80}),
             ("Media", {"red": 1.00, "green": 0.95, "blue": 0.70}),
@@ -158,7 +163,7 @@ def _aplicar_formato(ws) -> None:
                 }
             })
 
-        # Formato condicional: Estado (columna J)
+        # Estado: 7 valores con colores distintos
         for idx, (valor, color) in enumerate([
             ("Nuevo lead",           {"red": 0.80, "green": 0.95, "blue": 0.80}),
             ("En conversación",      {"red": 1.00, "green": 0.95, "blue": 0.70}),
@@ -183,21 +188,19 @@ def _aplicar_formato(ws) -> None:
 
         ws.spreadsheet.batch_update({"requests": visual})
     except Exception as e:
-        logger.warning(f"[Formato] No se pudo aplicar formato condicional: {e}")
+        logger.warning(f"[Formato] Error aplicando formato condicional: {e}")
 
-    logger.info("[Formato] Formato profesional aplicado al Google Sheet")
+    logger.info("Formato aplicado correctamente")
 
 
 def _campo(datos: dict, clave: str) -> str:
-    """Retorna el valor del campo o 'No especificado' si está vacío."""
     valor = datos.get(clave, "")
     return valor if valor and valor != VALOR_VACIO else VALOR_VACIO
 
 
 def _guardar_lead_sync(datos: dict) -> bool:
-    """Guarda o actualiza una fila de lead en Google Sheets (sincrónico)."""
     telefono = datos.get("telefono", "desconocido")
-    estado = datos.get("estado", VALOR_VACIO)
+    estado   = datos.get("estado", VALOR_VACIO)
     servicio = datos.get("servicio", VALOR_VACIO)
 
     logger.info(f"Guardando lead en Google Sheets: {telefono}")
@@ -212,11 +215,10 @@ def _guardar_lead_sync(datos: dict) -> bool:
         gc = _get_gc()
         ws = gc.open_by_key(os.getenv("GOOGLE_SHEET_ID")).sheet1
 
-        # Crear encabezados y aplicar formato si la hoja está vacía
+        # Crear encabezados si la hoja está vacía (sin aplicar formato aquí)
         primera_fila = ws.row_values(1)
         if not primera_fila:
             ws.append_row(ENCABEZADOS)
-            _aplicar_formato(ws)
 
         fila = [
             datos.get("fecha", datetime.now().strftime("%Y-%m-%d %H:%M")),
@@ -244,6 +246,13 @@ def _guardar_lead_sync(datos: dict) -> bool:
             ws.append_row(fila)
 
         logger.info(f"Lead guardado correctamente en Sheets: {telefono}")
+
+        # Aplicar formato después de cada guardado (independiente del resultado)
+        try:
+            aplicar_formato_sheet(ws)
+        except Exception as e:
+            logger.warning(f"Error aplicando formato: {e}")
+
         return True
 
     except Exception as e:
@@ -252,10 +261,6 @@ def _guardar_lead_sync(datos: dict) -> bool:
 
 
 async def guardar_lead(datos: dict) -> bool:
-    """
-    Guarda o actualiza un lead en Google Sheets.
-    Si Sheets no está configurado, retorna False sin lanzar error.
-    """
     if not esta_configurado():
         logger.debug("Google Sheets no configurado — omitiendo guardado")
         return False

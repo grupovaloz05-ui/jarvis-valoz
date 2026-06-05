@@ -11,6 +11,7 @@ from fastapi.responses import PlainTextResponse
 from dotenv import load_dotenv
 
 from agent.brain import generar_respuesta
+from agent.lead_parser import extraer_datos_lead
 from agent.memory import inicializar_db, guardar_mensaje, obtener_historial
 from agent.providers import obtener_proveedor
 from agent.tools import obtener_y_limpiar_confirmadas
@@ -92,15 +93,12 @@ async def _procesar_citas_confirmadas():
         logger.error(f"Error en _procesar_citas_confirmadas: {e}")
 
 
-async def _registrar_contacto(telefono: str, mensaje: str):
-    """Guarda o actualiza el registro básico del contacto en Sheets (fire-and-forget)."""
+async def _registrar_contacto(telefono: str, historial_completo: list[dict]):
+    """Extrae datos estructurados del lead y los guarda en Sheets (fire-and-forget)."""
     try:
-        await guardar_lead({
-            "telefono": telefono,
-            "fecha": datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "resumen": mensaje[:50],
-            "estado": "En conversación",
-        })
+        datos = await extraer_datos_lead(historial_completo, telefono)
+        datos["fecha"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+        await guardar_lead(datos)
     except Exception as e:
         logger.error(f"Error en _registrar_contacto: {e}")
 
@@ -129,8 +127,14 @@ async def webhook_handler(request: Request):
             await proveedor.enviar_mensaje(msg.telefono, respuesta)
             logger.info(f"Respuesta a {msg.telefono}: {respuesta}")
 
+            # Historial completo incluyendo el turno actual para la extracción de lead
+            historial_completo = historial + [
+                {"role": "user", "content": msg.texto},
+                {"role": "assistant", "content": respuesta},
+            ]
+
             # Integraciones en background — no bloquean la respuesta a WhatsApp
-            asyncio.create_task(_registrar_contacto(msg.telefono, msg.texto))
+            asyncio.create_task(_registrar_contacto(msg.telefono, historial_completo))
             asyncio.create_task(_procesar_citas_confirmadas())
 
         return {"status": "ok"}

@@ -8,6 +8,17 @@ from datetime import datetime
 
 logger = logging.getLogger("agentkit")
 
+VALOR_VACIO = "No especificado"
+
+ENCABEZADOS = [
+    "Fecha y hora", "Nombre", "WhatsApp", "Negocio", "Tipo de negocio",
+    "Servicio de interés", "Presupuesto", "Urgencia",
+    "Resumen de conversación", "Estado", "Próximo paso",
+]
+
+# Ancho de columnas en píxeles (mismo orden que ENCABEZADOS)
+ANCHOS_COLUMNAS = [160, 150, 120, 180, 150, 220, 110, 90, 340, 140, 220]
+
 
 def esta_configurado() -> bool:
     """Retorna True si todas las variables de Google Sheets están presentes."""
@@ -18,22 +29,11 @@ def esta_configurado() -> bool:
     )
 
 
-ENCABEZADOS = [
-    "Fecha y hora", "Nombre", "WhatsApp", "Negocio", "Tipo de negocio",
-    "Servicio de interés", "Presupuesto", "Urgencia",
-    "Resumen de conversación", "Estado", "Próximo paso",
-]
-
-
 def _get_gc():
-    """
-    Retorna un cliente gspread autenticado via cuenta de servicio.
-    Usa service_account_from_dict() que maneja el ciclo de vida del token internamente.
-    """
+    """Retorna cliente gspread autenticado via cuenta de servicio."""
     import gspread
 
     email = os.getenv("GOOGLE_SERVICE_ACCOUNT_EMAIL", "")
-    # Soporta tanto \n literales (como se pegan en Railway) como saltos de línea reales
     private_key = os.getenv("GOOGLE_PRIVATE_KEY", "").replace("\\n", "\n")
 
     info = {
@@ -47,41 +47,126 @@ def _get_gc():
     return gspread.service_account_from_dict(info)
 
 
+def _aplicar_formato(ws) -> None:
+    """
+    Aplica formato profesional al Sheet: encabezados, colores alternos, columnas.
+    Si falla algún paso, registra warning y continúa — nunca interrumpe el guardado.
+    """
+    try:
+        # Fila 1 congelada
+        ws.freeze(rows=1)
+    except Exception as e:
+        logger.warning(f"No se pudo congelar fila 1: {e}")
+
+    try:
+        # Fondo oscuro + texto blanco + negrita en encabezados
+        ws.format(f"A1:{chr(64 + len(ENCABEZADOS))}1", {
+            "backgroundColor": {"red": 0.13, "green": 0.13, "blue": 0.13},
+            "textFormat": {
+                "bold": True,
+                "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0},
+                "fontSize": 10,
+            },
+            "horizontalAlignment": "CENTER",
+            "verticalAlignment": "MIDDLE",
+        })
+    except Exception as e:
+        logger.warning(f"No se pudo aplicar formato a encabezados: {e}")
+
+    try:
+        # Ancho de columnas via Sheets API batch
+        sheet_id = ws.id
+        requests = [
+            {
+                "updateDimensionProperties": {
+                    "range": {
+                        "sheetId": sheet_id,
+                        "dimension": "COLUMNS",
+                        "startIndex": i,
+                        "endIndex": i + 1,
+                    },
+                    "properties": {"pixelSize": ancho},
+                    "fields": "pixelSize",
+                }
+            }
+            for i, ancho in enumerate(ANCHOS_COLUMNAS)
+        ]
+        ws.spreadsheet.batch_update({"requests": requests})
+    except Exception as e:
+        logger.warning(f"No se pudo ajustar ancho de columnas: {e}")
+
+    try:
+        # Colores alternos en filas de datos (fila 2 en adelante)
+        sheet_id = ws.id
+        ws.spreadsheet.batch_update({
+            "requests": [{
+                "addConditionalFormatRule": {
+                    "rule": {
+                        "ranges": [{"sheetId": sheet_id, "startRowIndex": 1, "endRowIndex": 1000}],
+                        "booleanRule": {
+                            "condition": {
+                                "type": "CUSTOM_FORMULA",
+                                "values": [{"userEnteredValue": "=MOD(ROW(),2)=0"}],
+                            },
+                            "format": {
+                                "backgroundColor": {"red": 0.93, "green": 0.96, "blue": 1.0}
+                            },
+                        },
+                    },
+                    "index": 0,
+                }
+            }]
+        })
+    except Exception as e:
+        logger.warning(f"No se pudieron aplicar colores alternos: {e}")
+
+    logger.info("Formato aplicado al Google Sheet")
+
+
+def _campo(datos: dict, clave: str) -> str:
+    """Retorna el valor del campo o 'No especificado' si está vacío."""
+    valor = datos.get(clave, "")
+    return valor if valor and valor != VALOR_VACIO else VALOR_VACIO
+
+
 def _guardar_lead_sync(datos: dict) -> bool:
     """Guarda o actualiza una fila de lead en Google Sheets (sincrónico)."""
     telefono = datos.get("telefono", "desconocido")
-    estado = datos.get("estado", "Nuevo")
-    servicio = datos.get("servicio", "")
+    estado = datos.get("estado", VALOR_VACIO)
+    servicio = datos.get("servicio", VALOR_VACIO)
 
-    logger.info(f"Intentando guardar lead en Google Sheets: {telefono}")
+    logger.info(f"Guardando lead en Google Sheets: {telefono}")
     logger.info(
-        f"Datos del lead preparados — telefono={telefono}, "
-        f"estado={estado}, servicio={servicio or '(sin especificar)'}"
+        f"Lead estructurado antes de guardar — "
+        f"nombre={datos.get('nombre', VALOR_VACIO)}, "
+        f"negocio={datos.get('negocio', VALOR_VACIO)}, "
+        f"servicio={servicio}, estado={estado}"
     )
 
     try:
         gc = _get_gc()
         ws = gc.open_by_key(os.getenv("GOOGLE_SHEET_ID")).sheet1
 
-        # Crear encabezados si la hoja está vacía
-        if not ws.row_values(1):
+        # Crear encabezados y aplicar formato si la hoja está vacía
+        primera_fila = ws.row_values(1)
+        if not primera_fila:
             ws.append_row(ENCABEZADOS)
+            _aplicar_formato(ws)
 
         fila = [
             datos.get("fecha", datetime.now().strftime("%Y-%m-%d %H:%M")),
-            datos.get("nombre", ""),
+            _campo(datos, "nombre"),
             telefono,
-            datos.get("negocio", ""),
-            datos.get("tipo_negocio", ""),
-            servicio,
-            datos.get("presupuesto", ""),
-            datos.get("urgencia", ""),
-            datos.get("resumen", ""),
-            estado,
-            datos.get("proximo_paso", ""),
+            _campo(datos, "negocio"),
+            _campo(datos, "tipo_negocio"),
+            _campo(datos, "servicio"),
+            _campo(datos, "presupuesto"),
+            _campo(datos, "urgencia"),
+            _campo(datos, "resumen"),
+            _campo(datos, "estado"),
+            _campo(datos, "proximo_paso"),
         ]
 
-        # Actualizar fila si el teléfono ya existe, sino agregar nueva
         logger.info(f"Buscando teléfono en Sheets: {telefono}")
         celda = ws.find(telefono)
 
@@ -105,10 +190,6 @@ async def guardar_lead(datos: dict) -> bool:
     """
     Guarda o actualiza un lead en Google Sheets.
     Si Sheets no está configurado, retorna False sin lanzar error.
-
-    Args:
-        datos: dict con campos opcionales: telefono, nombre, negocio, tipo_negocio,
-               servicio, presupuesto, urgencia, resumen, estado, proximo_paso
     """
     if not esta_configurado():
         logger.debug("Google Sheets no configurado — omitiendo guardado")

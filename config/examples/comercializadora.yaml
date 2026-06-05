@@ -1,0 +1,51 @@
+# config/examples/comercializadora.yaml — Ejemplo: Empresa comercializadora / distribuidora
+# Copia este archivo como config/client_config.yaml y ajusta los valores.
+
+CLIENT_NAME: "Comercializadora Nieto"
+CONTACT_NAME: "Emiliano"
+CONTACT_PHONE: "+52 96 3266 7800"
+
+BUSINESS_NAME: "Comercializadora Nieto"
+BUSINESS_TYPE: "Comercializadora y distribuidora"
+BUSINESS_DESCRIPTION: >
+  Comercializadora con 10 años de experiencia distribuyendo productos de limpieza,
+  consumibles de oficina y artículos industriales a empresas, hoteles y escuelas.
+  Manejamos pedidos al mayoreo con entregas en 24-48 horas.
+
+AGENT_NAME: "Max"
+TONE: "Profesional, directo y eficiente"
+
+BUSINESS_HOURS: "Lunes a Viernes 8:00 AM a 6:00 PM, Sábados 9:00 AM a 2:00 PM"
+
+SERVICES:
+  - nombre: "Productos de limpieza al mayoreo"
+    precio: "desde $2,500 MXN el pedido mínimo"
+  - nombre: "Consumibles de oficina"
+    precio: "cotización según volumen"
+  - nombre: "Artículos industriales"
+    precio: "cotización según especificación"
+  - nombre: "Entrega express 24h"
+    precio: "disponible para pedidos mayores a $5,000 MXN"
+
+FAQ:
+  - pregunta: "¿Cuál es el pedido mínimo?"
+    respuesta: "El pedido mínimo es de $2,500 MXN. Para crédito se requieren $5,000 MXN."
+  - pregunta: "¿Manejan crédito?"
+    respuesta: "Sí, a 15 y 30 días para clientes con más de 3 compras."
+  - pregunta: "¿Hacen entregas a domicilio?"
+    respuesta: "Sí, en la zona metropolitana sin costo adicional en pedidos mayores a $3,000 MXN."
+  - pregunta: "¿Dan factura?"
+    respuesta: "Sí, facturamos a cualquier RFC. Solo necesitamos los datos fiscales."
+
+DATOS_A_PEDIR:
+  - nombre
+  - empresa
+  - giro_empresa
+  - producto_de_interes
+  - volumen_estimado
+  - whatsapp
+
+OBJETIVO_LEAD: "Agendar llamada para cotización o enviar catálogo de productos"
+PROXIMO_PASO_IDEAL: "Enviar catálogo y solicitar primer pedido de prueba"
+
+WHATSAPP_PROVIDER: "meta"

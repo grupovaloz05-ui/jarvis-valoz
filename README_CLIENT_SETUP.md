@@ -1,5 +1,86 @@
 # Guía de Setup para Nuevos Clientes — Valoz Digital
 
+---
+
+## Cómo crear un agente nuevo en menos de 24 horas
+
+Sigue estos 9 pasos en orden para entregar un agente funcional en WhatsApp.
+
+### 1. Copiar la plantilla
+
+```bash
+git clone https://github.com/TU-USUARIO/jarvis-valoz.git agente-nombre-cliente
+cd agente-nombre-cliente
+pip3 install -r requirements.txt
+```
+
+### 2. Cambiar `config/client_config.yaml`
+
+Edita el archivo con los datos del cliente. Puedes partir de uno de los ejemplos en `config/examples/`:
+- `cafeteria.yaml` — negocios de alimentos y bebidas
+- `comercializadora.yaml` — distribuidoras y mayoristas
+- `clinica_dental.yaml` — clínicas y consultorios
+- `agencia_marketing.yaml` — agencias de servicios digitales
+
+Campos clave a cambiar: `BUSINESS_NAME`, `AGENT_NAME`, `SERVICES`, `FAQ`, `TONE`, `BUSINESS_HOURS`.
+
+También edita `config/prompts.yaml` con el system prompt personalizado para ese negocio.
+
+### 3. Crear el Google Sheet
+
+1. Ve a **sheets.google.com** y crea una hoja nueva
+2. Nómbrala: `Leads - [Nombre del cliente]`
+3. Copia el ID de la URL: `docs.google.com/spreadsheets/d/[ESTE-ID]/edit`
+4. El formato se aplica automáticamente la primera vez que se guarda un lead
+
+### 4. Compartir el Sheet con la cuenta de servicio
+
+1. En el Sheet, haz clic en **Compartir**
+2. Agrega el email de la cuenta de servicio (`GOOGLE_SERVICE_ACCOUNT_EMAIL`)
+3. Dale permiso de **Editor**
+4. Confirmar que el Sheet ID y el email están en las variables de entorno
+
+### 5. Agregar el número en Meta
+
+1. Ve a **developers.facebook.com** → tu app → WhatsApp → API Setup
+2. Agrega o selecciona el número de WhatsApp del cliente
+3. Copia el **Phone Number ID**
+4. Actualiza `META_PHONE_NUMBER_ID` en Railway
+
+### 6. Cambiar variables en Railway
+
+En Railway → tu proyecto → **Variables**, actualiza:
+- `META_PHONE_NUMBER_ID` (número del cliente)
+- `META_VERIFY_TOKEN` (ej: `cliente-agente-2024`)
+- `GOOGLE_SHEET_ID` (ID del Sheet del cliente)
+- `ANTHROPIC_API_KEY` (puede ser la misma)
+
+### 7. Deploy
+
+```bash
+git add .
+git commit -m "feat: agente para [nombre del cliente]"
+git push origin main
+```
+
+Railway detecta el push y hace deploy automático. Espera 2-3 minutos.
+
+### 8. Probar WhatsApp
+
+1. Configura el webhook en Meta con la URL de Railway + `/webhook`
+2. Envía un mensaje de prueba al número del cliente
+3. Verifica que el agente responde correctamente
+4. Verifica que aparece una fila en el Google Sheet
+
+### 9. Revisar Google Sheets
+
+- Abre el Sheet del cliente
+- Confirma que aparece la fila con los datos del lead
+- Verifica que el formato (encabezados oscuros, columnas, colores) se aplicó
+- Comparte el Sheet con el cliente para que vea sus leads en tiempo real
+
+---
+
 Cómo desplegar un agente de WhatsApp para un cliente nuevo en menos de 24 horas.
 
 ---

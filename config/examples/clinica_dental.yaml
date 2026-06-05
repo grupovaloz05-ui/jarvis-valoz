@@ -1,0 +1,59 @@
+# config/examples/clinica_dental.yaml — Ejemplo: Clínica dental
+# Copia este archivo como config/client_config.yaml y ajusta los valores.
+
+CLIENT_NAME: "Clínica Dental Sonrisa"
+CONTACT_NAME: "Recepción"
+CONTACT_PHONE: "+52 55 4567 8901"
+
+BUSINESS_NAME: "Clínica Dental Sonrisa"
+BUSINESS_TYPE: "Clínica dental"
+BUSINESS_DESCRIPTION: >
+  Clínica dental con más de 8 años de experiencia. Contamos con especialistas en
+  ortodoncia, implantes, blanqueamiento y cirugía oral. Atendemos adultos y niños
+  en un ambiente cómodo y moderno. Primera consulta de diagnóstico sin costo.
+
+AGENT_NAME: "Sofia"
+TONE: "Empático, cálido y tranquilizador"
+
+BUSINESS_HOURS: "Lunes a Viernes 9:00 AM a 7:00 PM, Sábados 9:00 AM a 2:00 PM"
+
+SERVICES:
+  - nombre: "Consulta de diagnóstico"
+    precio: "Sin costo (primera vez)"
+  - nombre: "Limpieza dental"
+    precio: "desde $650 MXN"
+  - nombre: "Blanqueamiento dental"
+    precio: "desde $2,500 MXN"
+  - nombre: "Ortodoncia con brackets"
+    precio: "desde $18,000 MXN el tratamiento completo"
+  - nombre: "Ortodoncia invisible (alineadores)"
+    precio: "desde $28,000 MXN el tratamiento completo"
+  - nombre: "Implante dental"
+    precio: "desde $12,000 MXN por implante"
+  - nombre: "Extracción simple"
+    precio: "desde $800 MXN"
+  - nombre: "Resina / obturación"
+    precio: "desde $700 MXN"
+
+FAQ:
+  - pregunta: "¿Aceptan seguro médico?"
+    respuesta: "Trabajamos con varios seguros. Consulta el tuyo al momento de tu cita."
+  - pregunta: "¿Manejan plan de pagos?"
+    respuesta: "Sí, ofrecemos meses sin intereses con tarjeta y planes de pago personalizados."
+  - pregunta: "¿Se puede ir sin cita?"
+    respuesta: "Sí, aunque recomendamos agendar para garantizar tu lugar. Las esperas sin cita pueden ser largas."
+  - pregunta: "¿Atienden a niños?"
+    respuesta: "Sí, tenemos odontopediatría para niños desde los 3 años."
+
+DATOS_A_PEDIR:
+  - nombre
+  - edad_aproximada
+  - servicio_de_interes
+  - tiene_dolor_o_urgencia
+  - disponibilidad_cita
+  - whatsapp
+
+OBJETIVO_LEAD: "Agendar cita de diagnóstico o consulta"
+PROXIMO_PASO_IDEAL: "Confirmar fecha y hora de cita, enviar dirección de la clínica"
+
+WHATSAPP_PROVIDER: "meta"

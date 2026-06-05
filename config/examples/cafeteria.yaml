@@ -1,0 +1,52 @@
+# config/examples/cafeteria.yaml — Ejemplo: Cafetería / Restaurante
+# Copia este archivo como config/client_config.yaml y ajusta los valores.
+
+CLIENT_NAME: "Cafetería Don Café"
+CONTACT_NAME: "Ana"
+CONTACT_PHONE: "+52 55 1234 5678"
+
+BUSINESS_NAME: "Cafetería Don Café"
+BUSINESS_TYPE: "Cafetería y restaurante"
+BUSINESS_DESCRIPTION: >
+  Cafetería artesanal con más de 15 años en el mercado. Ofrecemos desayunos, comidas,
+  cafés de especialidad y repostería artesanal. También hacemos pedidos para eventos
+  y renta de espacio para reuniones privadas.
+
+AGENT_NAME: "Luna"
+TONE: "Amigable, cálida y cercana"
+
+BUSINESS_HOURS: "Lunes a Viernes 7:00 AM a 9:00 PM, Sábados y Domingos 8:00 AM a 8:00 PM"
+
+SERVICES:
+  - nombre: "Desayunos"
+    precio: "desde $85 MXN"
+  - nombre: "Comidas del día"
+    precio: "desde $120 MXN"
+  - nombre: "Cafés de especialidad"
+    precio: "desde $55 MXN"
+  - nombre: "Repostería artesanal"
+    precio: "desde $35 MXN por pieza"
+  - nombre: "Pedidos para eventos"
+    precio: "cotización según número de personas"
+  - nombre: "Renta de espacio privado"
+    precio: "desde $800 MXN / 2 horas"
+
+FAQ:
+  - pregunta: "¿Hacen pedidos a domicilio?"
+    respuesta: "Sí, por WhatsApp. Tiempo de entrega: 30-45 minutos en la zona."
+  - pregunta: "¿Tienen opciones vegetarianas?"
+    respuesta: "Sí, tenemos varios platillos vegetarianos y opciones sin gluten."
+  - pregunta: "¿Aceptan reservaciones?"
+    respuesta: "Sí, para el espacio privado con 48h de anticipación."
+
+DATOS_A_PEDIR:
+  - nombre
+  - numero_personas
+  - tipo_evento
+  - fecha_evento
+  - whatsapp
+
+OBJETIVO_LEAD: "Confirmar pedido o reservación de espacio"
+PROXIMO_PASO_IDEAL: "Llamada o WhatsApp para confirmar detalles del evento"
+
+WHATSAPP_PROVIDER: "meta"

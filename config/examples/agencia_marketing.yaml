@@ -1,0 +1,59 @@
+# config/examples/agencia_marketing.yaml — Ejemplo: Agencia de marketing digital
+# Copia este archivo como config/client_config.yaml y ajusta los valores.
+
+CLIENT_NAME: "Agencia Boost"
+CONTACT_NAME: "Carlos"
+CONTACT_PHONE: "+52 81 2345 6789"
+
+BUSINESS_NAME: "Agencia Boost"
+BUSINESS_TYPE: "Agencia de marketing digital"
+BUSINESS_DESCRIPTION: >
+  Agencia especializada en publicidad digital, manejo de redes sociales y generación
+  de leads para empresas medianas y grandes. Trabajamos con Meta Ads, Google Ads,
+  TikTok Ads y estrategias de contenido orgánico. Resultados comprobados en retail,
+  educación, salud y servicios.
+
+AGENT_NAME: "Leo"
+TONE: "Estratégico, confiado y orientado a resultados"
+
+BUSINESS_HOURS: "Lunes a Viernes 9:00 AM a 7:00 PM"
+
+SERVICES:
+  - nombre: "Manejo de redes sociales"
+    precio: "desde $8,000 MXN/mes"
+  - nombre: "Campañas Meta Ads (Facebook/Instagram)"
+    precio: "desde $5,000 MXN/mes (sin incluir inversión publicitaria)"
+  - nombre: "Campañas Google Ads"
+    precio: "desde $6,000 MXN/mes (sin incluir inversión)"
+  - nombre: "TikTok Ads"
+    precio: "desde $5,500 MXN/mes"
+  - nombre: "Estrategia de contenido"
+    precio: "desde $6,500 MXN/mes"
+  - nombre: "Auditoría de marketing digital"
+    precio: "desde $3,500 MXN (pago único)"
+  - nombre: "Paquete completo 360°"
+    precio: "desde $18,000 MXN/mes"
+
+FAQ:
+  - pregunta: "¿Cuánto tiempo tarda en verse resultados?"
+    respuesta: "Los primeros resultados se ven entre 30 y 60 días. Las campañas maduran en 3 meses."
+  - pregunta: "¿Cuánto debo invertir en publicidad?"
+    respuesta: "Recomendamos mínimo $5,000 MXN/mes en inversión publicitaria para ver resultados."
+  - pregunta: "¿Trabajan con contratos?"
+    respuesta: "Sí, contratos mínimos de 3 meses. Después puedes continuar mes a mes."
+  - pregunta: "¿Reportan resultados?"
+    respuesta: "Sí, reporte mensual detallado con métricas, alcance, leads generados y ROI."
+
+DATOS_A_PEDIR:
+  - nombre
+  - empresa
+  - giro
+  - objetivo_principal
+  - presupuesto_publicidad
+  - plataformas_de_interes
+  - whatsapp
+
+OBJETIVO_LEAD: "Agendar llamada de diagnóstico gratuita de 30 minutos"
+PROXIMO_PASO_IDEAL: "Llamada de diagnóstico → propuesta personalizada → inicio de campaña"
+
+WHATSAPP_PROVIDER: "meta"

@@ -50,7 +50,7 @@ Responde ÚNICAMENTE con JSON válido, sin texto extra ni bloques de código:
   "presupuesto": "presupuesto mencionado o No especificado",
   "urgencia": "Alta | Media | Baja | No especificado",
   "resumen": "resumen de la conversación en 1-2 oraciones",
-  "estado": "En conversación | Interesado | Cita agendada | Pendiente de cotización | Descartado",
+  "estado": "Nuevo lead | En conversación | Interesado | Cita agendada | Cotización pendiente | Cerrado | Perdido",
   "proximo_paso": "acción recomendada o No especificado"
 }}"""
 

@@ -49,19 +49,22 @@ def _get_gc():
 
 def _aplicar_formato(ws) -> None:
     """
-    Aplica formato profesional al Sheet: encabezados, colores alternos, columnas.
-    Si falla algún paso, registra warning y continúa — nunca interrumpe el guardado.
+    Aplica formato profesional al Sheet en 3 grupos independientes.
+    Si un grupo falla, los demás continúan y el guardado del lead nunca se interrumpe.
     """
+    sheet_id = ws.id
+    num_cols = len(ENCABEZADOS)
+    col_fin = chr(64 + num_cols)  # 'K' para 11 columnas
+
+    # ── Grupo 1: Congelar fila + estilo de encabezados ──────────────────────
     try:
-        # Fila 1 congelada
         ws.freeze(rows=1)
     except Exception as e:
-        logger.warning(f"No se pudo congelar fila 1: {e}")
+        logger.warning(f"[Formato] No se pudo congelar fila 1: {e}")
 
     try:
-        # Fondo oscuro + texto blanco + negrita en encabezados
-        ws.format(f"A1:{chr(64 + len(ENCABEZADOS))}1", {
-            "backgroundColor": {"red": 0.13, "green": 0.13, "blue": 0.13},
+        ws.format(f"A1:{col_fin}1", {
+            "backgroundColor": {"red": 0.12, "green": 0.24, "blue": 0.49},
             "textFormat": {
                 "bold": True,
                 "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0},
@@ -71,56 +74,118 @@ def _aplicar_formato(ws) -> None:
             "verticalAlignment": "MIDDLE",
         })
     except Exception as e:
-        logger.warning(f"No se pudo aplicar formato a encabezados: {e}")
+        logger.warning(f"[Formato] No se pudo aplicar estilo a encabezados: {e}")
 
+    # ── Grupo 2: Columnas + ajuste de texto + bordes ─────────────────────────
     try:
-        # Ancho de columnas via Sheets API batch
-        sheet_id = ws.id
-        requests = [
-            {
+        estructural = []
+
+        # Ancho de columnas
+        for i, ancho in enumerate(ANCHOS_COLUMNAS):
+            estructural.append({
                 "updateDimensionProperties": {
-                    "range": {
-                        "sheetId": sheet_id,
-                        "dimension": "COLUMNS",
-                        "startIndex": i,
-                        "endIndex": i + 1,
-                    },
+                    "range": {"sheetId": sheet_id, "dimension": "COLUMNS", "startIndex": i, "endIndex": i + 1},
                     "properties": {"pixelSize": ancho},
                     "fields": "pixelSize",
                 }
-            }
-            for i, ancho in enumerate(ANCHOS_COLUMNAS)
-        ]
-        ws.spreadsheet.batch_update({"requests": requests})
-    except Exception as e:
-        logger.warning(f"No se pudo ajustar ancho de columnas: {e}")
+            })
 
+        # Ajuste de texto (wrap) en Resumen (col I, idx 8) y Próximo paso (col K, idx 10)
+        for col_idx in [8, 10]:
+            estructural.append({
+                "repeatCell": {
+                    "range": {"sheetId": sheet_id, "startRowIndex": 1, "startColumnIndex": col_idx, "endColumnIndex": col_idx + 1},
+                    "cell": {"userEnteredFormat": {"wrapStrategy": "WRAP"}},
+                    "fields": "userEnteredFormat.wrapStrategy",
+                }
+            })
+
+        # Bordes en toda la tabla (filas 1 a 1000)
+        color_borde_ext  = {"red": 0.60, "green": 0.60, "blue": 0.60}
+        color_borde_int  = {"red": 0.85, "green": 0.85, "blue": 0.85}
+        estilo_ext  = {"style": "SOLID", "width": 1, "color": color_borde_ext}
+        estilo_int  = {"style": "SOLID", "width": 1, "color": color_borde_int}
+        estructural.append({
+            "updateBorders": {
+                "range": {"sheetId": sheet_id, "startRowIndex": 0, "endRowIndex": 1000, "startColumnIndex": 0, "endColumnIndex": num_cols},
+                "top": estilo_ext, "bottom": estilo_ext,
+                "left": estilo_ext, "right": estilo_ext,
+                "innerHorizontal": estilo_int, "innerVertical": estilo_int,
+            }
+        })
+
+        ws.spreadsheet.batch_update({"requests": estructural})
+    except Exception as e:
+        logger.warning(f"[Formato] No se pudo aplicar formato estructural: {e}")
+
+    # ── Grupo 3: Colores alternos + formato condicional ──────────────────────
     try:
-        # Colores alternos en filas de datos (fila 2 en adelante)
-        sheet_id = ws.id
-        ws.spreadsheet.batch_update({
-            "requests": [{
+        visual = []
+        datos_range  = {"sheetId": sheet_id, "startRowIndex": 1, "endRowIndex": 1000, "startColumnIndex": 0, "endColumnIndex": num_cols}
+        urgencia_range = {"sheetId": sheet_id, "startRowIndex": 1, "endRowIndex": 1000, "startColumnIndex": 7, "endColumnIndex": 8}
+        estado_range   = {"sheetId": sheet_id, "startRowIndex": 1, "endRowIndex": 1000, "startColumnIndex": 9, "endColumnIndex": 10}
+
+        # Colores alternos (filas pares)
+        visual.append({
+            "addConditionalFormatRule": {
+                "rule": {
+                    "ranges": [datos_range],
+                    "booleanRule": {
+                        "condition": {"type": "CUSTOM_FORMULA", "values": [{"userEnteredValue": "=MOD(ROW(),2)=0"}]},
+                        "format": {"backgroundColor": {"red": 0.95, "green": 0.97, "blue": 1.0}},
+                    },
+                },
+                "index": 0,
+            }
+        })
+
+        # Formato condicional: Urgencia (columna H)
+        for idx, (valor, color) in enumerate([
+            ("Alta",  {"red": 1.00, "green": 0.80, "blue": 0.80}),
+            ("Media", {"red": 1.00, "green": 0.95, "blue": 0.70}),
+            ("Baja",  {"red": 0.80, "green": 0.95, "blue": 0.80}),
+        ]):
+            visual.append({
                 "addConditionalFormatRule": {
                     "rule": {
-                        "ranges": [{"sheetId": sheet_id, "startRowIndex": 1, "endRowIndex": 1000}],
+                        "ranges": [urgencia_range],
                         "booleanRule": {
-                            "condition": {
-                                "type": "CUSTOM_FORMULA",
-                                "values": [{"userEnteredValue": "=MOD(ROW(),2)=0"}],
-                            },
-                            "format": {
-                                "backgroundColor": {"red": 0.93, "green": 0.96, "blue": 1.0}
-                            },
+                            "condition": {"type": "TEXT_EQ", "values": [{"userEnteredValue": valor}]},
+                            "format": {"backgroundColor": color},
                         },
                     },
-                    "index": 0,
+                    "index": 1 + idx,
                 }
-            }]
-        })
-    except Exception as e:
-        logger.warning(f"No se pudieron aplicar colores alternos: {e}")
+            })
 
-    logger.info("Formato aplicado al Google Sheet")
+        # Formato condicional: Estado (columna J)
+        for idx, (valor, color) in enumerate([
+            ("Nuevo lead",           {"red": 0.80, "green": 0.95, "blue": 0.80}),
+            ("En conversación",      {"red": 1.00, "green": 0.95, "blue": 0.70}),
+            ("Interesado",           {"red": 0.90, "green": 0.85, "blue": 1.00}),
+            ("Cita agendada",        {"red": 0.80, "green": 0.90, "blue": 1.00}),
+            ("Cotización pendiente", {"red": 1.00, "green": 0.85, "blue": 0.65}),
+            ("Cerrado",              {"red": 0.50, "green": 0.85, "blue": 0.50}),
+            ("Perdido",              {"red": 1.00, "green": 0.75, "blue": 0.75}),
+        ]):
+            visual.append({
+                "addConditionalFormatRule": {
+                    "rule": {
+                        "ranges": [estado_range],
+                        "booleanRule": {
+                            "condition": {"type": "TEXT_EQ", "values": [{"userEnteredValue": valor}]},
+                            "format": {"backgroundColor": color},
+                        },
+                    },
+                    "index": 4 + idx,
+                }
+            })
+
+        ws.spreadsheet.batch_update({"requests": visual})
+    except Exception as e:
+        logger.warning(f"[Formato] No se pudo aplicar formato condicional: {e}")
+
+    logger.info("[Formato] Formato profesional aplicado al Google Sheet")
 
 
 def _campo(datos: dict, clave: str) -> str:

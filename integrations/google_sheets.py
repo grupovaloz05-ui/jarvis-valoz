@@ -49,8 +49,6 @@ def _get_gc():
 
 def _guardar_lead_sync(datos: dict) -> bool:
     """Guarda o actualiza una fila de lead en Google Sheets (sincrónico)."""
-    import gspread
-
     telefono = datos.get("telefono", "desconocido")
     estado = datos.get("estado", "Nuevo")
     servicio = datos.get("servicio", "")
@@ -84,11 +82,15 @@ def _guardar_lead_sync(datos: dict) -> bool:
         ]
 
         # Actualizar fila si el teléfono ya existe, sino agregar nueva
-        try:
-            celda = ws.find(telefono)
+        logger.info(f"Buscando teléfono en Sheets: {telefono}")
+        celda = ws.find(telefono)
+
+        if celda:
+            logger.info(f"Teléfono encontrado, actualizando fila {celda.row}")
             col_fin = chr(64 + len(fila))
             ws.update(f"A{celda.row}:{col_fin}{celda.row}", [fila])
-        except gspread.exceptions.CellNotFound:
+        else:
+            logger.info("Teléfono no encontrado, creando nueva fila")
             ws.append_row(fila)
 
         logger.info(f"Lead guardado correctamente en Sheets: {telefono}")

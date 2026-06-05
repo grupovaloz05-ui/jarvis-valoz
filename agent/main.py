@@ -70,33 +70,39 @@ async def _procesar_citas_confirmadas():
     Procesa citas confirmadas durante este turno de conversación.
     Intenta crear evento en Calendar; si falla, guarda en Sheets como pendiente.
     """
-    for cita in obtener_y_limpiar_confirmadas():
-        resultado_calendar = await crear_evento_cita(cita)
+    try:
+        for cita in obtener_y_limpiar_confirmadas():
+            resultado_calendar = await crear_evento_cita(cita)
 
-        if resultado_calendar.get("ok"):
-            estado = "Cita agendada en Calendar"
-            proximo_paso = f"Confirmar con cliente: {cita.get('disponibilidad')}"
-        else:
-            estado = "Pendiente de agendar"
-            proximo_paso = f"Agendar manualmente: {cita.get('disponibilidad')}"
+            if resultado_calendar.get("ok"):
+                estado = "Cita agendada en Calendar"
+                proximo_paso = f"Confirmar con cliente: {cita.get('disponibilidad')}"
+            else:
+                estado = "Pendiente de agendar"
+                proximo_paso = f"Agendar manualmente: {cita.get('disponibilidad')}"
 
-        await guardar_lead({
-            **cita,
-            "estado": estado,
-            "proximo_paso": proximo_paso,
-            "resumen": f"Solicita cita para: {cita.get('servicio')}",
-        })
-        logger.info(f"Cita procesada para {cita.get('telefono')} — estado: {estado}")
+            await guardar_lead({
+                **cita,
+                "estado": estado,
+                "proximo_paso": proximo_paso,
+                "resumen": f"Solicita cita para: {cita.get('servicio')}",
+            })
+            logger.info(f"Cita procesada para {cita.get('telefono')} — estado: {estado}")
+    except Exception as e:
+        logger.error(f"Error en _procesar_citas_confirmadas: {e}")
 
 
 async def _registrar_contacto(telefono: str, mensaje: str):
     """Guarda o actualiza el registro básico del contacto en Sheets (fire-and-forget)."""
-    await guardar_lead({
-        "telefono": telefono,
-        "fecha": datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "resumen": mensaje[:200],
-        "estado": "En conversación",
-    })
+    try:
+        await guardar_lead({
+            "telefono": telefono,
+            "fecha": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "resumen": mensaje[:50],
+            "estado": "En conversación",
+        })
+    except Exception as e:
+        logger.error(f"Error en _registrar_contacto: {e}")
 
 
 @app.post("/webhook")

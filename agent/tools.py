@@ -48,33 +48,29 @@ def buscar_en_knowledge(consulta: str) -> str:
         except (UnicodeDecodeError, IOError):
             continue
 
-    if resultados:
-        return "\n---\n".join(resultados)
-    return "No encontré información específica sobre eso en mis archivos."
+    return "\n---\n".join(resultados) if resultados else "No encontré información específica sobre eso."
 
 
 # ────────────────────────────────────────────────────────────
-# Herramientas para: Responder preguntas frecuentes (FAQ)
+# FAQ
 # ────────────────────────────────────────────────────────────
 
 def obtener_info_servicios() -> str:
-    """Retorna un resumen de los servicios disponibles de Valoz Digital."""
     return buscar_en_knowledge("servicios")
 
 
 def obtener_info_precios(servicio: str = "") -> str:
-    """Retorna información de precios para un servicio específico o todos."""
-    if servicio:
-        return buscar_en_knowledge(servicio)
-    return buscar_en_knowledge("precio")
+    return buscar_en_knowledge(servicio) if servicio else buscar_en_knowledge("precio")
 
 
 # ────────────────────────────────────────────────────────────
-# Herramientas para: Agendar citas
+# Agendamiento de citas
 # ────────────────────────────────────────────────────────────
 
-# Almacenamiento en memoria simple para citas pendientes (en producción usar DB)
 _citas_pendientes: dict[str, dict] = {}
+
+# Cola de citas confirmadas para que main.py las procese con las integraciones
+_citas_confirmadas: list[dict] = []
 
 
 def iniciar_agendamiento(telefono: str) -> dict:
@@ -82,13 +78,13 @@ def iniciar_agendamiento(telefono: str) -> dict:
     _citas_pendientes[telefono] = {
         "etapa": "nombre",
         "datos": {},
-        "iniciado_en": datetime.utcnow().isoformat()
+        "iniciado_en": datetime.utcnow().isoformat(),
     }
     return {"ok": True, "siguiente": "nombre"}
 
 
 def guardar_dato_cita(telefono: str, campo: str, valor: str) -> dict:
-    """Guarda un dato del formulario de agendamiento."""
+    """Guarda un campo del formulario de agendamiento."""
     if telefono not in _citas_pendientes:
         iniciar_agendamiento(telefono)
 
@@ -111,21 +107,43 @@ def obtener_cita_pendiente(telefono: str) -> dict:
 
 
 def confirmar_cita(telefono: str) -> str:
-    """Genera el mensaje de confirmación de cita y limpia el estado."""
+    """
+    Genera el mensaje de confirmación y encola la cita para que main.py
+    la procese con Google Sheets y Google Calendar.
+    """
     cita = _citas_pendientes.pop(telefono, {})
     datos = cita.get("datos", {})
     nombre = datos.get("nombre", "cliente")
     servicio = datos.get("servicio", "consulta")
     disponibilidad = datos.get("disponibilidad", "horario acordado")
+
+    # Encolar para procesamiento con integraciones en main.py
+    _citas_confirmadas.append({
+        "telefono": telefono,
+        "nombre": nombre,
+        "negocio": datos.get("negocio", ""),
+        "servicio": servicio,
+        "disponibilidad": disponibilidad,
+        "whatsapp": datos.get("whatsapp", telefono),
+        "fecha": datetime.now().strftime("%Y-%m-%d %H:%M"),
+    })
+
     return (
-        f"Listo, {nombre}. Tu solicitud de cita para {servicio} "
-        f"fue registrada. Nuestro equipo te contactará en el horario: {disponibilidad}. "
+        f"Listo, {nombre}. Tu solicitud de cita para {servicio} fue registrada. "
+        f"Nuestro equipo te contactará en el horario: {disponibilidad}. "
         f"¡Gracias por confiar en Valoz Digital!"
     )
 
 
+def obtener_y_limpiar_confirmadas() -> list[dict]:
+    """Retorna las citas confirmadas y limpia la cola. Llamado desde main.py."""
+    confirmadas = _citas_confirmadas.copy()
+    _citas_confirmadas.clear()
+    return confirmadas
+
+
 # ────────────────────────────────────────────────────────────
-# Herramienta de escalación a humano
+# Escalación a humano
 # ────────────────────────────────────────────────────────────
 
 def escalar_a_humano(telefono: str, motivo: str = "") -> str:

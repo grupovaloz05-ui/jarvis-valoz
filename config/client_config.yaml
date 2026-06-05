@@ -1,0 +1,60 @@
+# config/client_config.yaml — Plantilla de configuración por cliente
+# Para crear un agente para un nuevo negocio: copia este archivo,
+# rellena todos los campos y actualiza las variables de entorno en Railway.
+
+# ─── Datos del cliente (Valoz Digital interno) ───────────────
+CLIENT_NAME: "Valoz Digital"
+CONTACT_NAME: "Equipo Valoz"
+CONTACT_PHONE: ""                  # WhatsApp del humano que recibe escalaciones
+
+# ─── Datos del negocio ───────────────────────────────────────
+BUSINESS_NAME: "Valoz Digital"
+BUSINESS_TYPE: "Agencia de automatización e IA"
+BUSINESS_DESCRIPTION: >
+  Valoz Digital ayuda a empresas a captar, atender y convertir más clientes mediante
+  agentes de IA, páginas web profesionales y contenido para redes sociales.
+
+# ─── Servicios y precios (resumen para el agente) ────────────
+SERVICES:
+  - nombre: "Agente IA Básico"
+    precio: "$3,500 – $4,500 MXN"
+  - nombre: "Agente IA Pro"
+    precio: "$6,000 – $7,500 MXN"
+  - nombre: "Agente IA Premium"
+    precio: "$8,500 – $12,000 MXN"
+  - nombre: "Landing Page"
+    precio: "$5,500 – $7,000 MXN"
+  - nombre: "Página Web Profesional"
+    precio: "$8,000 – $12,000 MXN"
+  - nombre: "Página Web Premium"
+    precio: "$11,000 – $15,000 MXN"
+  - nombre: "Paquete Contenido Básico"
+    precio: "desde $2,000 MXN/mes"
+  - nombre: "Paquete Contenido Intermedio"
+    precio: "$3,500 – $4,500 MXN/mes"
+  - nombre: "Paquete Contenido Pro"
+    precio: "$5,000 – $6,500 MXN/mes"
+
+# ─── Preguntas frecuentes ────────────────────────────────────
+FAQ:
+  - pregunta: "¿Cuánto tarda en estar listo el agente?"
+    respuesta: "Entre 3 y 7 días hábiles según el paquete."
+  - pregunta: "¿Tienen garantía?"
+    respuesta: "Sí, ofrecemos ajustes sin costo en los primeros 15 días."
+  - pregunta: "¿Puedo pagar en partes?"
+    respuesta: "Sí, manejamos esquemas de pago. Pregunta a nuestro equipo."
+
+# ─── Horario de atención ─────────────────────────────────────
+BUSINESS_HOURS: "Lunes a domingo, 6:00 AM a 5:00 AM"
+
+# ─── Personalidad del agente ─────────────────────────────────
+AGENT_NAME: "Jarvis"
+TONE: "Profesional, amigable, persuasivo y empático"
+
+# ─── Integraciones (rellenar en .env, NO aquí) ───────────────
+# GOOGLE_SHEET_ID: en .env
+# GOOGLE_CALENDAR_ID: en .env
+# META_PHONE_NUMBER_ID: en .env
+
+# ─── Datos del proveedor WhatsApp ────────────────────────────
+WHATSAPP_PROVIDER: "meta"          # meta | twilio

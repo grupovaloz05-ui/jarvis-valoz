@@ -1,9 +1,11 @@
 # agent/main.py — Servidor FastAPI + Webhook de WhatsApp
 # Generado por AgentKit
 
+import asyncio
 import os
 import logging
 from contextlib import asynccontextmanager
+from datetime import datetime
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import PlainTextResponse
 from dotenv import load_dotenv
@@ -11,6 +13,9 @@ from dotenv import load_dotenv
 from agent.brain import generar_respuesta
 from agent.memory import inicializar_db, guardar_mensaje, obtener_historial
 from agent.providers import obtener_proveedor
+from agent.tools import obtener_y_limpiar_confirmadas
+from integrations.google_sheets import guardar_lead, esta_configurado as sheets_activo
+from integrations.google_calendar import crear_evento_cita, esta_configurado as calendar_activo
 
 load_dotenv()
 
@@ -25,41 +30,80 @@ PORT = int(os.getenv("PORT", 8000))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Inicializa la base de datos al arrancar el servidor."""
     await inicializar_db()
     logger.info("Base de datos inicializada")
     logger.info(f"Servidor AgentKit corriendo en puerto {PORT}")
     logger.info(f"Proveedor de WhatsApp: {proveedor.__class__.__name__}")
+    logger.info(f"Google Sheets: {'activo' if sheets_activo() else 'no configurado'}")
+    logger.info(f"Google Calendar: {'activo' if calendar_activo() else 'no configurado'}")
     yield
 
 
 app = FastAPI(
     title="Jarvis — Agente WhatsApp de Valoz Digital",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 
 @app.get("/")
 async def health_check():
-    """Endpoint de salud para Railway/monitoreo."""
-    return {"status": "ok", "agente": "Jarvis", "negocio": "Valoz Digital"}
+    return {
+        "status": "ok",
+        "agente": "Jarvis",
+        "negocio": "Valoz Digital",
+        "sheets": sheets_activo(),
+        "calendar": calendar_activo(),
+    }
 
 
 @app.get("/webhook")
 async def webhook_verificacion(request: Request):
-    """Verificación GET del webhook (requerido por Meta Cloud API)."""
     resultado = await proveedor.validar_webhook(request)
     if resultado is not None:
         return PlainTextResponse(str(resultado))
     return {"status": "ok"}
 
 
+async def _procesar_citas_confirmadas():
+    """
+    Procesa citas confirmadas durante este turno de conversación.
+    Intenta crear evento en Calendar; si falla, guarda en Sheets como pendiente.
+    """
+    for cita in obtener_y_limpiar_confirmadas():
+        resultado_calendar = await crear_evento_cita(cita)
+
+        if resultado_calendar.get("ok"):
+            estado = "Cita agendada en Calendar"
+            proximo_paso = f"Confirmar con cliente: {cita.get('disponibilidad')}"
+        else:
+            estado = "Pendiente de agendar"
+            proximo_paso = f"Agendar manualmente: {cita.get('disponibilidad')}"
+
+        await guardar_lead({
+            **cita,
+            "estado": estado,
+            "proximo_paso": proximo_paso,
+            "resumen": f"Solicita cita para: {cita.get('servicio')}",
+        })
+        logger.info(f"Cita procesada para {cita.get('telefono')} — estado: {estado}")
+
+
+async def _registrar_contacto(telefono: str, mensaje: str):
+    """Guarda o actualiza el registro básico del contacto en Sheets (fire-and-forget)."""
+    await guardar_lead({
+        "telefono": telefono,
+        "fecha": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "resumen": mensaje[:200],
+        "estado": "En conversación",
+    })
+
+
 @app.post("/webhook")
 async def webhook_handler(request: Request):
     """
-    Recibe mensajes de WhatsApp via Meta Cloud API.
-    Procesa el mensaje, genera respuesta con Claude y la envía de vuelta.
+    Recibe mensajes de WhatsApp, genera respuesta con Claude y la envía.
+    Dispara integraciones con Google Sheets y Calendar en background.
     """
     try:
         mensajes = await proveedor.parsear_webhook(request)
@@ -70,17 +114,18 @@ async def webhook_handler(request: Request):
 
             logger.info(f"Mensaje de {msg.telefono}: {msg.texto}")
 
-            # Obtener historial ANTES de guardar (brain.py agrega el mensaje actual)
             historial = await obtener_historial(msg.telefono)
-
             respuesta = await generar_respuesta(msg.texto, historial)
 
             await guardar_mensaje(msg.telefono, "user", msg.texto)
             await guardar_mensaje(msg.telefono, "assistant", respuesta)
 
             await proveedor.enviar_mensaje(msg.telefono, respuesta)
-
             logger.info(f"Respuesta a {msg.telefono}: {respuesta}")
+
+            # Integraciones en background — no bloquean la respuesta a WhatsApp
+            asyncio.create_task(_registrar_contacto(msg.telefono, msg.texto))
+            asyncio.create_task(_procesar_citas_confirmadas())
 
         return {"status": "ok"}
 

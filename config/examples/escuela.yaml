@@ -1,0 +1,63 @@
+# config/examples/escuela.yaml — Ejemplo: Escuela, academia o centro de capacitación
+# Copia como config/client_config.yaml y ajusta los valores.
+
+CLIENT_NAME: "Academia Impulsa"
+CONTACT_NAME: "Roberto"
+CONTACT_PHONE: "+52 81 6789 0123"
+
+BUSINESS_NAME: "Academia Impulsa"
+BUSINESS_TYPE: "Centro de capacitación y formación profesional"
+BUSINESS_DESCRIPTION: >
+  Academia de cursos y diplomados en áreas de negocios, tecnología y desarrollo personal.
+  Ofrecemos modalidades presencial, en línea y mixta. Contamos con certificaciones reconocidas
+  y convenios con empresas para prácticas y colocación laboral.
+
+AGENT_NAME: "Rigo"
+TONE: "Orientador, confiable y motivador — como un buen maestro"
+
+BUSINESS_HOURS: "Lunes a Viernes 8:00 AM a 8:00 PM, Sábado 9:00 AM a 2:00 PM"
+
+SERVICES:
+  - nombre: "Cursos cortos (20 a 40 horas)"
+    precio: "$1,500 – $3,500 MXN"
+  - nombre: "Diplomados (120 a 200 horas)"
+    precio: "$6,000 – $12,000 MXN"
+  - nombre: "Cursos en línea con acceso ilimitado"
+    precio: "$800 – $2,500 MXN"
+  - nombre: "Capacitación empresarial (grupos)"
+    precio: "Cotización según horas y participantes"
+  - nombre: "Certificaciones"
+    precio: "Incluida en algunos programas o desde $500 MXN adicional"
+
+FAQ:
+  - pregunta: "¿Los cursos tienen certificado?"
+    respuesta: "Sí, todos los cursos incluyen constancia y los diplomados tienen certificado oficial."
+  - pregunta: "¿Puedo pagar en mensualidades?"
+    respuesta: "Sí, manejamos pagos en 2 o 3 parcialidades según el programa."
+  - pregunta: "¿Qué modalidades tienen?"
+    respuesta: "Presencial, en línea en vivo y grabado. Elige la que mejor se adapte a tu ritmo."
+  - pregunta: "¿Cuándo empieza el siguiente grupo?"
+    respuesta: "Iniciamos nuevos grupos cada mes. Regístrate para asegurar tu lugar."
+  - pregunta: "¿Hay descuentos por grupos o empresas?"
+    respuesta: "Sí, aplican descuentos para grupos de 5 o más personas. Pide una cotización."
+
+QUALIFICATION_QUESTIONS:
+  - "¿Buscas capacitarte tú o llevar capacitación a tu empresa?"
+  - "¿Qué área te interesa: negocios, tecnología, ventas u otra?"
+  - "¿Prefieres modalidad presencial, en línea o mixta?"
+  - "¿Con qué presupuesto cuentas aproximadamente?"
+  - "¿Para cuándo necesitas empezar?"
+
+LEAD_FIELDS:
+  - nombre
+  - tipo_capacitacion
+  - area_interes
+  - modalidad
+  - presupuesto
+  - fecha_inicio
+  - whatsapp
+
+OBJETIVO_LEAD: "Inscripción confirmada o envío de propuesta de capacitación empresarial"
+PROXIMO_PASO_IDEAL: "Informes → inscripción → pago → inicio de grupo"
+
+WHATSAPP_PROVIDER: "meta"

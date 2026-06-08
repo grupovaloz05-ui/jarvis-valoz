@@ -1,0 +1,63 @@
+# config/examples/restaurante.yaml — Ejemplo: Restaurante o negocio de comida
+# Copia como config/client_config.yaml y ajusta los valores.
+
+CLIENT_NAME: "Restaurante La Fogata"
+CONTACT_NAME: "Mario"
+CONTACT_PHONE: "+52 81 4567 8901"
+
+BUSINESS_NAME: "La Fogata"
+BUSINESS_TYPE: "Restaurante y servicio de catering"
+BUSINESS_DESCRIPTION: >
+  Restaurante de cocina mexicana con especialidad en cortes y mariscos.
+  Ofrecemos servicio en salón, pedidos para llevar y catering para eventos.
+  Atendemos bodas, cumpleaños, reuniones corporativas y eventos familiares.
+
+AGENT_NAME: "Paco"
+TONE: "Cálido, cercano y con sentido del humor suave — como buen anfitrión"
+
+BUSINESS_HOURS: "Martes a Domingo 1:00 PM a 11:00 PM"
+
+SERVICES:
+  - nombre: "Servicio en salón"
+    precio: "Menú desde $180 MXN por persona"
+  - nombre: "Pedidos para llevar"
+    precio: "Según selección del menú"
+  - nombre: "Catering para eventos pequeños (hasta 30 personas)"
+    precio: "Desde $4,500 MXN"
+  - nombre: "Catering para eventos medianos (30 a 100 personas)"
+    precio: "Desde $9,000 MXN"
+  - nombre: "Catering para eventos grandes (más de 100 personas)"
+    precio: "Cotización personalizada"
+  - nombre: "Reservación de salón privado"
+    precio: "Sin costo con consumo mínimo de $2,000 MXN"
+
+FAQ:
+  - pregunta: "¿Hacen reservaciones?"
+    respuesta: "Sí, puedes reservar por WhatsApp o llamando al restaurante."
+  - pregunta: "¿Tienen menú para niños?"
+    respuesta: "Sí, tenemos opciones especiales para los más pequeños."
+  - pregunta: "¿Aceptan tarjeta?"
+    respuesta: "Sí, aceptamos todas las tarjetas y efectivo."
+  - pregunta: "¿Tienen estacionamiento?"
+    respuesta: "Sí, contamos con estacionamiento gratuito para clientes."
+  - pregunta: "¿Con cuánto tiempo se agenda el catering?"
+    respuesta: "Mínimo con una semana de anticipación para eventos menores. Eventos grandes, con 3 semanas."
+
+QUALIFICATION_QUESTIONS:
+  - "¿Buscas reservar mesa, pedir para llevar o cotizar catering para un evento?"
+  - "¿Para cuántas personas sería?"
+  - "¿Para qué fecha lo necesitas?"
+  - "¿Es para un evento especial o consumo general?"
+
+LEAD_FIELDS:
+  - nombre
+  - tipo_servicio
+  - numero_personas
+  - fecha_evento
+  - presupuesto
+  - whatsapp
+
+OBJETIVO_LEAD: "Reservación confirmada o cotización de catering"
+PROXIMO_PASO_IDEAL: "Confirmar fecha → menú → anticipo → evento"
+
+WHATSAPP_PROVIDER: "meta"

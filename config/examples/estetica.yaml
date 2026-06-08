@@ -1,0 +1,66 @@
+# config/examples/estetica.yaml — Ejemplo: Estética, salón de belleza o spa
+# Copia como config/client_config.yaml y ajusta los valores.
+
+CLIENT_NAME: "Estética Glam Studio"
+CONTACT_NAME: "Daniela"
+CONTACT_PHONE: "+52 81 5678 9012"
+
+BUSINESS_NAME: "Glam Studio"
+BUSINESS_TYPE: "Estética y salón de belleza"
+BUSINESS_DESCRIPTION: >
+  Estética especializada en cortes, coloración, tratamientos capilares, uñas y maquillaje.
+  Atendemos mujeres y hombres. Trabajamos con cita previa para garantizar atención personalizada.
+  También ofrecemos paquetes para novias y eventos especiales.
+
+AGENT_NAME: "Vale"
+TONE: "Amigable, entusiasta y confiable — como tu amiga experta en belleza"
+
+BUSINESS_HOURS: "Lunes a Sábado 9:00 AM a 8:00 PM"
+
+SERVICES:
+  - nombre: "Corte de cabello dama"
+    precio: "$150 – $280 MXN"
+  - nombre: "Corte de cabello caballero"
+    precio: "$80 – $150 MXN"
+  - nombre: "Tinte completo"
+    precio: "$350 – $600 MXN según largo"
+  - nombre: "Mechas o balayage"
+    precio: "$500 – $1,200 MXN según técnica"
+  - nombre: "Alisado o keratina"
+    precio: "$800 – $1,500 MXN según largo"
+  - nombre: "Manicure"
+    precio: "$120 – $200 MXN"
+  - nombre: "Pedicure"
+    precio: "$150 – $250 MXN"
+  - nombre: "Maquillaje para evento"
+    precio: "$400 – $800 MXN"
+  - nombre: "Paquete novia completo"
+    precio: "desde $1,500 MXN"
+
+FAQ:
+  - pregunta: "¿Necesito cita?"
+    respuesta: "Sí, trabajamos con cita para darte la mejor atención. Puedes agendar por aquí mismo."
+  - pregunta: "¿Cuánto dura el servicio de keratina?"
+    respuesta: "Aproximadamente 2 a 3 horas según el largo del cabello."
+  - pregunta: "¿Qué marcas de productos usan?"
+    respuesta: "Trabajamos con marcas profesionales como Loreal, Wella y Schwarzkopf."
+  - pregunta: "¿Atienden novias el día del evento?"
+    respuesta: "Sí, con reservación anticipada. Te recomendamos agendar con mínimo 2 semanas."
+
+QUALIFICATION_QUESTIONS:
+  - "¿Qué servicio te interesa: cabello, uñas, maquillaje o un paquete completo?"
+  - "¿Para una ocasión especial o mantenimiento regular?"
+  - "¿Tienes alguna fecha en mente?"
+  - "¿Ya habías visitado el salón antes?"
+
+LEAD_FIELDS:
+  - nombre
+  - servicio_interes
+  - fecha_cita
+  - urgencia
+  - whatsapp
+
+OBJETIVO_LEAD: "Agendar cita confirmada"
+PROXIMO_PASO_IDEAL: "Confirmar fecha y hora → recordatorio el día anterior → visita"
+
+WHATSAPP_PROVIDER: "meta"

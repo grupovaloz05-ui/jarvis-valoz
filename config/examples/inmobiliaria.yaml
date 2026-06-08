@@ -1,0 +1,59 @@
+# config/examples/inmobiliaria.yaml — Ejemplo: Inmobiliaria o agencia de bienes raíces
+# Copia como config/client_config.yaml y ajusta los valores.
+
+CLIENT_NAME: "Inmobiliaria Horizonte"
+CONTACT_NAME: "Andrea"
+CONTACT_PHONE: "+52 81 3456 7890"
+
+BUSINESS_NAME: "Inmobiliaria Horizonte"
+BUSINESS_TYPE: "Agencia de bienes raíces"
+BUSINESS_DESCRIPTION: >
+  Agencia especializada en venta y renta de propiedades residenciales y comerciales.
+  Trabajamos con casas, departamentos, locales y terrenos en la zona metropolitana.
+  Acompañamos al cliente desde la búsqueda hasta la firma del contrato.
+
+AGENT_NAME: "Sofía"
+TONE: "Profesional, cálida y orientada a encontrar la propiedad ideal"
+
+BUSINESS_HOURS: "Lunes a Sábado 9:00 AM a 7:00 PM"
+
+SERVICES:
+  - nombre: "Venta de propiedades residenciales"
+    precio: "Comisión del 3% al 5% del valor de la propiedad"
+  - nombre: "Renta de departamentos y casas"
+    precio: "Un mes de renta como comisión"
+  - nombre: "Venta de locales y naves comerciales"
+    precio: "Según acuerdo y tipo de operación"
+  - nombre: "Asesoría para crédito hipotecario"
+    precio: "Sin costo adicional"
+
+FAQ:
+  - pregunta: "¿Cuánto tiempo tarda vender una propiedad?"
+    respuesta: "Depende del precio y la zona. En promedio de 2 a 4 meses."
+  - pregunta: "¿Necesito exclusividad para vender mi propiedad?"
+    respuesta: "No es obligatorio, pero con exclusividad invertimos más en promoción."
+  - pregunta: "¿Ayudan con crédito hipotecario?"
+    respuesta: "Sí, te orientamos con bancos y opciones de financiamiento sin costo extra."
+  - pregunta: "¿Hacen avalúo?"
+    respuesta: "Sí, hacemos valuación de referencia para orientar el precio de venta."
+
+QUALIFICATION_QUESTIONS:
+  - "¿Buscas comprar, rentar o poner en venta una propiedad?"
+  - "¿En qué zona o colonia te interesa?"
+  - "¿Cuál es tu presupuesto aproximado?"
+  - "¿Lo necesitas para uso personal, familiar o inversión?"
+  - "¿Tienes pre-aprobación de crédito o buscas pagar de contado?"
+
+LEAD_FIELDS:
+  - nombre
+  - tipo_operacion
+  - zona_interes
+  - presupuesto
+  - urgencia
+  - whatsapp
+  - disponibilidad_cita
+
+OBJETIVO_LEAD: "Agendar visita a propiedad o llamada de asesoría"
+PROXIMO_PASO_IDEAL: "Visita → propuesta personalizada → firma de contrato"
+
+WHATSAPP_PROVIDER: "meta"

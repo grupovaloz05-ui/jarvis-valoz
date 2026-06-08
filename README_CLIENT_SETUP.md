@@ -1,304 +1,273 @@
-# Guía de Setup para Nuevos Clientes — Valoz Digital
+# Guía de setup para nuevos clientes — Valoz Digital
+
+## Cómo crear un agente nuevo en 15 a 30 minutos
+
+Sigue estos pasos en orden. Si tienes todos los datos del cliente listos,
+el proceso completo toma entre 15 y 30 minutos.
+
+También puedes usar el script automático:
+```bash
+python3 scripts/create_client_template.py
+```
 
 ---
 
-## Cómo crear un agente nuevo en menos de 24 horas
-
-Sigue estos 9 pasos en orden para entregar un agente funcional en WhatsApp.
-
-### 1. Copiar la plantilla
+### Paso 1 — Copiar el proyecto base
 
 ```bash
-git clone https://github.com/TU-USUARIO/jarvis-valoz.git agente-nombre-cliente
+git clone https://github.com/TU-USUARIO/whatsapp-agentkit.git agente-nombre-cliente
 cd agente-nombre-cliente
 pip3 install -r requirements.txt
 ```
 
-### 2. Cambiar `config/client_config.yaml`
+O usa el script que crea la carpeta con todo prellenado:
+```bash
+python3 scripts/create_client_template.py
+```
 
-Edita el archivo con los datos del cliente. Puedes partir de uno de los ejemplos en `config/examples/`:
-- `cafeteria.yaml` — negocios de alimentos y bebidas
-- `comercializadora.yaml` — distribuidoras y mayoristas
-- `clinica_dental.yaml` — clínicas y consultorios
-- `agencia_marketing.yaml` — agencias de servicios digitales
+---
 
-Campos clave a cambiar: `BUSINESS_NAME`, `AGENT_NAME`, `SERVICES`, `FAQ`, `TONE`, `BUSINESS_HOURS`.
+### Paso 2 — Crear nuevo repo en GitHub
 
-También edita `config/prompts.yaml` con el system prompt personalizado para ese negocio.
-
-### 3. Crear el Google Sheet
-
-1. Ve a **sheets.google.com** y crea una hoja nueva
-2. Nómbrala: `Leads - [Nombre del cliente]`
-3. Copia el ID de la URL: `docs.google.com/spreadsheets/d/[ESTE-ID]/edit`
-4. El formato se aplica automáticamente la primera vez que se guarda un lead
-
-### 4. Compartir el Sheet con la cuenta de servicio
-
-1. En el Sheet, haz clic en **Compartir**
-2. Agrega el email de la cuenta de servicio (`GOOGLE_SERVICE_ACCOUNT_EMAIL`)
-3. Dale permiso de **Editor**
-4. Confirmar que el Sheet ID y el email están en las variables de entorno
-
-### 5. Agregar el número en Meta
-
-1. Ve a **developers.facebook.com** → tu app → WhatsApp → API Setup
-2. Agrega o selecciona el número de WhatsApp del cliente
-3. Copia el **Phone Number ID**
-4. Actualiza `META_PHONE_NUMBER_ID` en Railway
-
-### 6. Cambiar variables en Railway
-
-En Railway → tu proyecto → **Variables**, actualiza:
-- `META_PHONE_NUMBER_ID` (número del cliente)
-- `META_VERIFY_TOKEN` (ej: `cliente-agente-2024`)
-- `GOOGLE_SHEET_ID` (ID del Sheet del cliente)
-- `ANTHROPIC_API_KEY` (puede ser la misma)
-
-### 7. Deploy
+1. Ve a **github.com → New repository**
+2. Nombre: `agente-[nombre-cliente]`
+3. Privado
+4. Sin README (ya tienes uno)
+5. Empuja el código:
 
 ```bash
-git add .
+git remote set-url origin https://github.com/TU-USUARIO/agente-nombre-cliente.git
+git push -u origin main
+```
+
+---
+
+### Paso 3 — Editar `config/client_config.yaml`
+
+Cambia los campos con los datos reales del cliente:
+- `BUSINESS_NAME`, `AGENT_NAME`, `TONE`, `BUSINESS_HOURS`
+- `SERVICES` — lista de servicios con rangos de precio
+- `FAQ` — 5 a 10 preguntas frecuentes reales
+- `CONTACT_NAME`, `CONTACT_PHONE` — humano que recibe escalaciones
+
+Usa uno de los ejemplos en `config/examples/` como punto de partida:
+- `cafeteria.yaml` — negocios de alimentos y bebidas
+- `restaurante.yaml` — restaurante con catering
+- `comercializadora.yaml` — distribuidoras y mayoristas
+- `clinica_dental.yaml` — clínicas y consultorios
+- `inmobiliaria.yaml` — bienes raíces
+- `estetica.yaml` — salones de belleza y spa
+- `escuela.yaml` — academias y centros de capacitación
+- `agencia_marketing.yaml` — agencias digitales
+
+---
+
+### Paso 4 — Editar `config/prompts.yaml`
+
+Reemplaza el system prompt con el del nuevo negocio:
+- Identidad y nombre del agente
+- Cómo responde preguntas de precio (siempre rangos, nunca precio cerrado)
+- Escenarios específicos del giro del negocio
+- Datos a recopilar del prospecto
+
+---
+
+### Paso 5 — Llenar `knowledge/`
+
+Edita los archivos de conocimiento del cliente:
+- `knowledge/servicios.md` — descripción detallada de cada servicio
+- `knowledge/precios.md` — rangos de precios por servicio
+- `knowledge/faq.md` — preguntas frecuentes con respuestas reales
+- `knowledge/politicas.md` — pagos, garantías, cancelaciones
+- `knowledge/objeciones.md` — cómo manejar "está caro", "lo voy a pensar", etc.
+
+El agente carga solo el archivo relevante según la intención del cliente, reduciendo el costo por mensaje.
+
+---
+
+### Paso 6 — Crear el Google Sheet
+
+1. Ve a **sheets.google.com** → crear hoja nueva
+2. Nómbrala: `Leads — [Nombre del cliente]`
+3. Copia el ID de la URL:
+   `docs.google.com/spreadsheets/d/[ESTE-ID]/edit`
+4. Guárdalo para el Paso 10
+
+---
+
+### Paso 7 — Compartir el Sheet con la cuenta de servicio
+
+1. En el Sheet → **Compartir**
+2. Agrega el email de la cuenta de servicio (`GOOGLE_SERVICE_ACCOUNT_EMAIL`)
+3. Dale permiso de **Editor**
+4. El formato se aplica automáticamente en el primer lead
+
+---
+
+### Paso 8 — Obtener `GOOGLE_SHEET_ID`
+
+El ID está en la URL del Sheet:
+```
+https://docs.google.com/spreadsheets/d/[AQUI_ESTA_EL_ID]/edit
+```
+
+---
+
+### Paso 9 — Agregar o migrar el número en Meta Cloud API
+
+1. Ve a **developers.facebook.com** → tu app → WhatsApp → API Setup
+2. Agrega el número de WhatsApp del cliente
+3. Copia el **Phone Number ID**
+4. El token de sistema se obtiene en: Meta → Business Settings → System Users → Generate Token
+
+---
+
+### Paso 10 — Configurar variables en Railway
+
+En Railway → tu proyecto → **Variables**, agrega o actualiza:
+
+| Variable | Valor |
+|----------|-------|
+| `ANTHROPIC_API_KEY` | Tu API key de Anthropic |
+| `META_ACCESS_TOKEN` | Token de sistema de Meta |
+| `META_PHONE_NUMBER_ID` | ID del número del cliente |
+| `META_VERIFY_TOKEN` | Ej: `nombre-cliente-2026` |
+| `GOOGLE_SHEET_ID` | ID del Sheet del cliente |
+| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | Email de la cuenta de servicio |
+| `GOOGLE_PRIVATE_KEY` | Private key del JSON (con `\n` literales) |
+| `GOOGLE_CALENDAR_ID` | (Opcional) ID del Calendar del cliente |
+| `TIMEZONE` | `America/Mexico_City` |
+| `ENVIRONMENT` | `production` |
+| `PORT` | `8000` |
+
+---
+
+### Paso 11 — Deploy
+
+Railway detecta el push a GitHub y hace deploy automático.
+
+```bash
+git add config/ knowledge/ prompts.yaml
 git commit -m "feat: agente para [nombre del cliente]"
 git push origin main
 ```
 
-Railway detecta el push y hace deploy automático. Espera 2-3 minutos.
-
-### 8. Probar WhatsApp
-
-1. Configura el webhook en Meta con la URL de Railway + `/webhook`
-2. Envía un mensaje de prueba al número del cliente
-3. Verifica que el agente responde correctamente
-4. Verifica que aparece una fila en el Google Sheet
-
-### 9. Revisar Google Sheets
-
-- Abre el Sheet del cliente
-- Confirma que aparece la fila con los datos del lead
-- Verifica que el formato (encabezados oscuros, columnas, colores) se aplicó
-- Comparte el Sheet con el cliente para que vea sus leads en tiempo real
+Espera 2-3 minutos. Verifica en Railway que el deploy sea verde.
 
 ---
 
-Cómo desplegar un agente de WhatsApp para un cliente nuevo en menos de 24 horas.
+### Paso 12 — Configurar webhook en Meta (si cambió la URL)
+
+Si es un proyecto nuevo en Railway, tendrás una nueva URL pública:
+
+1. Ve a Meta → WhatsApp → Configuration → Webhook
+2. Callback URL: `https://[tu-app].up.railway.app/webhook`
+3. Verify Token: el valor de `META_VERIFY_TOKEN`
+4. Haz clic en **Verify and Save**
+5. Suscríbete al campo **messages**
 
 ---
 
-## Qué datos pedirle al cliente
+### Paso 13 — Probar WhatsApp
 
-Antes de empezar, recopila esta información:
+Envía un mensaje al número del cliente y verifica:
+- El agente responde en menos de 10 segundos
+- Responde con el tono correcto
+- Conoce los servicios y precios
+- Logs de Railway muestran el mensaje recibido y enviado
+
+---
+
+### Paso 14 — Probar Google Sheets
+
+1. Abre el Sheet del cliente
+2. Envía un par de mensajes de prueba en WhatsApp
+3. Confirma que aparece una fila con los datos del lead
+4. Verifica que el formato se aplicó (encabezados azules, colores condicionales)
+
+---
+
+### Paso 15 — Entregar al cliente
+
+- [ ] Comparte el Google Sheet con el cliente (permiso de solo lectura o editor)
+- [ ] Envíale el número de WhatsApp del agente
+- [ ] Explica cómo ver los leads en Sheets
+- [ ] Agenda revisión de ajustes a los 7 días
+
+---
+
+## Qué datos pedirle al cliente antes de empezar
 
 | Dato | Ejemplo |
 |------|---------|
 | Nombre del negocio | "Clínica Dental Sonrisa" |
-| Descripción del negocio | Qué vende, a quién, cómo trabaja |
-| Servicios y precios | Lista completa con rangos de precio |
-| Nombre del agente | "Ana", "Soporte", etc. |
-| Tono de comunicación | Formal / Amigable / Vendedor |
-| Horario de atención | Lunes-Viernes 9am-6pm |
-| Preguntas frecuentes | Las 5-10 preguntas más comunes de sus clientes |
-| WhatsApp del humano | Número para escalar conversaciones |
-| Proveedor de WhatsApp | Meta Cloud API o Twilio |
-| Credenciales del proveedor | Ver Sección 4 |
-
----
-
-## Pasos para crear el agente
-
-### 1. Clonar la plantilla
-
-```bash
-git clone https://github.com/TU-USUARIO/jarvis-valoz.git nombre-cliente-agente
-cd nombre-cliente-agente
-```
-
-### 2. Instalar dependencias
-
-```bash
-pip3 install -r requirements.txt
-```
-
-### 3. Configurar el negocio
-
-Edita estos dos archivos con los datos del cliente:
-
-**`config/client_config.yaml`** — Datos del negocio, servicios, FAQ, horario.
-
-**`config/prompts.yaml`** — System prompt del agente (personalidad, reglas, conocimiento).
-Remplaza cada sección con la información específica del cliente.
-
-**`knowledge/`** — Coloca aquí los archivos del cliente: menú, catálogo, precios en PDF/TXT/MD.
-
-### 4. Configurar variables de entorno
-
-Copia el template:
-```bash
-cp .env.example .env
-```
-
-Rellena `.env` con los datos del cliente:
-
-```env
-ANTHROPIC_API_KEY=sk-ant-...
-
-WHATSAPP_PROVIDER=meta
-META_ACCESS_TOKEN=...
-META_PHONE_NUMBER_ID=...
-META_VERIFY_TOKEN=cliente-agente-2024
-
-GOOGLE_SHEET_ID=...                 # Opcional
-GOOGLE_SERVICE_ACCOUNT_EMAIL=...    # Opcional
-GOOGLE_PRIVATE_KEY=...              # Opcional
-GOOGLE_CALENDAR_ID=...              # Opcional
-```
-
-### 5. Probar el agente en local
-
-```bash
-python3 tests/test_local.py
-```
-
-Simula una conversación como si fueras el cliente. Verifica que:
-- Responde correctamente las preguntas frecuentes
-- Usa el tono correcto
-- Conoce los servicios y precios
-- Escala a humano cuando corresponde
-
-Si algo no está bien, ajusta `config/prompts.yaml` y repite.
-
----
-
-## Configurar Google Sheets (CRM de leads)
-
-### Crear la cuenta de servicio
-
-1. Ve a **console.cloud.google.com**
-2. Crea un proyecto nuevo (ej: "jarvis-cliente")
-3. Ve a **APIs & Services → Enable APIs** y activa:
-   - Google Sheets API
-   - Google Drive API
-4. Ve a **APIs & Services → Credentials → Create Credentials → Service Account**
-5. Ponle un nombre (ej: "jarvis-sheets")
-6. Descarga el archivo JSON de la cuenta de servicio
-
-### Extraer credenciales del JSON
-
-Del archivo JSON descargado, copia:
-- `client_email` → `GOOGLE_SERVICE_ACCOUNT_EMAIL`
-- `private_key` → `GOOGLE_PRIVATE_KEY` (reemplaza los saltos de línea reales por `\n` literal)
-
-Para convertir el private_key en una sola línea (en Mac/Linux):
-```bash
-cat tu-archivo.json | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['private_key'].replace('\n','\\\\n'))"
-```
-
-### Compartir el Google Sheet
-
-1. Crea un nuevo Google Sheet para el cliente
-2. Copia el ID del Sheet desde la URL:
-   `https://docs.google.com/spreadsheets/d/[ESTE-ES-EL-ID]/edit`
-3. Comparte el Sheet con el email de la cuenta de servicio (`client_email` del JSON)
-4. Dale permiso de **Editor**
-
-### Configurar en .env
-
-```env
-GOOGLE_SHEET_ID=1BxiMV...tu-sheet-id
-GOOGLE_SERVICE_ACCOUNT_EMAIL=jarvis-sheets@proyecto.iam.gserviceaccount.com
-GOOGLE_PRIVATE_KEY=-----BEGIN RSA PRIVATE KEY-----\nMIIE...\n-----END RSA PRIVATE KEY-----\n
-```
-
----
-
-## Configurar Google Calendar (citas automáticas)
-
-### Activar Calendar API
-
-1. En el mismo proyecto de Google Cloud, activa la **Google Calendar API**
-2. La misma cuenta de servicio sirve para ambas integraciones
-
-### Compartir el Calendar
-
-1. Abre Google Calendar y ve a **Configuración → [Tu calendario] → Compartir**
-2. Agrega el email de la cuenta de servicio con permiso de **Hacer cambios en eventos**
-3. Copia el **ID del calendario** (aparece en Configuración del calendario)
-   Ejemplo: `cliente@gmail.com` o `c_abc123...@group.calendar.google.com`
-
-### Configurar en .env
-
-```env
-GOOGLE_CALENDAR_ID=tu-calendario@gmail.com
-TIMEZONE=America/Mexico_City
-```
-
----
-
-## Deploy en Railway
-
-### 1. Subir a GitHub
-
-```bash
-git add .
-git commit -m "feat: agente para [nombre del cliente]"
-git remote add origin https://github.com/TU-USUARIO/nombre-cliente-agente.git
-git push -u origin main
-```
-
-### 2. Crear proyecto en Railway
-
-1. Ve a **railway.app** → New Project → Deploy from GitHub
-2. Selecciona el repositorio del cliente
-3. Railway detecta el `Dockerfile` automáticamente
-
-### 3. Variables de entorno en Railway
-
-En Railway → tu proyecto → **Variables**, agrega todas las del `.env` del cliente.
-
-> Para `GOOGLE_PRIVATE_KEY` en Railway: pega el valor con los `\n` literales.
-> Railway los maneja correctamente.
-
-### 4. Configurar webhook en Meta
-
-Una vez que Railway asigne la URL pública:
-
-1. Ve a **developers.facebook.com** → tu app → WhatsApp → Configuration
-2. Callback URL: `https://tu-app.up.railway.app/webhook`
-3. Verify Token: el valor de `META_VERIFY_TOKEN` en `.env`
-4. Suscríbete al campo **"messages"** → Guardar
-
----
-
-## Checklist de entrega al cliente
-
-Antes de entregar el agente, verifica:
-
-- [ ] El agente responde correctamente en `python3 tests/test_local.py`
-- [ ] Conoce todos los servicios y precios del cliente
-- [ ] Responde en el tono correcto
-- [ ] Las preguntas frecuentes están bien cubiertas
-- [ ] Escala a humano cuando el cliente quiere cotización o llamada
-- [ ] El agente está desplegado en Railway y el servidor responde
-- [ ] El webhook de Meta/Twilio está configurado y verificado
-- [ ] Se recibió al menos un mensaje de prueba real en WhatsApp
-- [ ] Google Sheets está guardando leads (si está configurado)
-- [ ] Google Calendar está creando eventos (si está configurado)
-- [ ] El cliente tiene acceso al Google Sheet para ver sus leads
+| Tipo de negocio | Clínica dental |
+| Descripción | Qué ofrece, a quién, cómo trabaja |
+| Servicios y precios | Lista con rangos de precio |
+| Nombre del agente | "Ana", "Soporte", "Asistente" |
+| Tono | Formal / Amigable / Vendedor |
+| Horario de atención | Lunes a Viernes 9am-6pm |
+| Preguntas frecuentes | Las 5-10 más comunes de sus clientes |
+| Contacto humano | Nombre y WhatsApp para escalaciones |
+| Proveedor WhatsApp | Meta Cloud API (recomendado) |
 
 ---
 
 ## Comandos útiles
 
 ```bash
-# Probar sin WhatsApp
+# Generar plantilla para cliente nuevo
+python3 scripts/create_client_template.py
+
+# Probar el agente sin WhatsApp
 python3 tests/test_local.py
 
 # Arrancar servidor local
 uvicorn agent.main:app --reload --port 8000
 
-# Ver estado del agente
+# Verificar que el servidor responde
 curl http://localhost:8000/
 
-# Build Docker
-docker compose up --build
+# Ver logs del agente en Railway
+railway logs
+```
+
+---
+
+## Estructura del repositorio
+
+```
+agente-cliente/
+├── agent/
+│   ├── main.py              # Servidor FastAPI + webhook
+│   ├── brain.py             # Conexión con Claude API
+│   ├── context_loader.py    # Carga selectiva de conocimiento
+│   ├── memory.py            # Historial de conversación (SQLite)
+│   ├── lead_parser.py       # Extrae datos del lead con Haiku
+│   ├── tools.py             # Herramientas del agente
+│   └── providers/
+│       ├── base.py          # Interfaz abstracta de proveedor
+│       └── meta.py          # Adaptador Meta Cloud API
+├── config/
+│   ├── client_config.yaml   # Datos del negocio ← EDITAR
+│   ├── prompts.yaml         # System prompt del agente ← EDITAR
+│   └── examples/            # Plantillas por tipo de negocio
+├── integrations/
+│   ├── google_sheets.py     # CRM de leads en Google Sheets
+│   └── google_calendar.py   # Citas automáticas en Calendar
+├── knowledge/
+│   ├── servicios.md         # ← EDITAR con servicios del cliente
+│   ├── precios.md           # ← EDITAR con precios del cliente
+│   ├── faq.md               # ← EDITAR con FAQs del cliente
+│   ├── politicas.md         # ← EDITAR con políticas del cliente
+│   └── objeciones.md        # ← EDITAR con manejo de objeciones
+├── scripts/
+│   └── create_client_template.py  # Genera estructura para cliente nuevo
+├── tests/
+│   └── test_local.py        # Simulador de chat local
+├── Dockerfile
+├── docker-compose.yml
+├── .env.example
+├── CHECKLIST_NUEVO_CLIENTE.md
+└── README_CLIENT_SETUP.md
 ```

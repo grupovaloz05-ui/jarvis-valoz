@@ -7,6 +7,7 @@ import httpx
 from anthropic import AsyncAnthropic
 from dotenv import load_dotenv
 from agent.context_loader import obtener_contexto
+from agent.client_loader import get_config_path, get_prompts_path, get_business_name
 
 load_dotenv()
 logger = logging.getLogger("agentkit")
@@ -20,26 +21,17 @@ client = AsyncAnthropic(
 # Máximo de mensajes del historial enviados a Claude por turno
 MAX_HISTORIAL = 10
 
-
-def _cargar_nombre_negocio() -> str:
-    try:
-        with open("config/client_config.yaml", "r", encoding="utf-8") as f:
-            cfg = yaml.safe_load(f) or {}
-            return cfg.get("BUSINESS_NAME", "negocio")
-    except Exception:
-        return "negocio"
-
-
-_NOMBRE_NEGOCIO = _cargar_nombre_negocio()
-logger.info(f"Configuración cargada para: {_NOMBRE_NEGOCIO}")
+_NOMBRE_NEGOCIO = get_business_name()
+logger.info(f"Cliente cargado: {_NOMBRE_NEGOCIO}")
 
 
 def cargar_config_prompts() -> dict:
+    path = get_prompts_path()
     try:
-        with open("config/prompts.yaml", "r", encoding="utf-8") as f:
+        with open(path, "r", encoding="utf-8") as f:
             return yaml.safe_load(f) or {}
     except FileNotFoundError:
-        logger.error("config/prompts.yaml no encontrado")
+        logger.error(f"prompts.yaml no encontrado: {path}")
         return {}
 
 

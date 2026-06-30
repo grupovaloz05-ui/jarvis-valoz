@@ -6,6 +6,7 @@ import logging
 import httpx
 from fastapi import Request
 from agent.providers.base import ProveedorWhatsApp, MensajeEntrante
+from agent.whatsapp_media import send_whatsapp_image, upload_whatsapp_media
 
 logger = logging.getLogger("agentkit")
 
@@ -70,3 +71,30 @@ class ProveedorMeta(ProveedorWhatsApp):
             else:
                 logger.error(f"Error al enviar mensaje a {telefono}: {r.status_code} — {r.text}")
                 return False
+
+    async def enviar_imagen(
+        self,
+        telefono: str,
+        media_id: str | None = None,
+        image_url: str | None = None,
+        caption: str | None = None,
+    ) -> bool:
+        """Envía una imagen por Meta WhatsApp Cloud API."""
+        return await send_whatsapp_image(
+            telefono=telefono,
+            access_token=self.access_token or "",
+            phone_number_id=self.phone_number_id or "",
+            media_id=media_id,
+            image_url=image_url,
+            caption=caption,
+            api_version=self.api_version,
+        )
+
+    async def subir_media(self, ruta_local: str) -> str | None:
+        """Sube una imagen local a Meta Media API y retorna el media_id."""
+        return await upload_whatsapp_media(
+            ruta_local=ruta_local,
+            access_token=self.access_token or "",
+            phone_number_id=self.phone_number_id or "",
+            api_version=self.api_version,
+        )

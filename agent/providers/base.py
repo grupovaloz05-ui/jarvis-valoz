@@ -28,6 +28,16 @@ class ProveedorWhatsApp(ABC):
         """Envía un mensaje de texto. Retorna True si fue exitoso."""
         ...
 
+    async def enviar_imagen(
+        self,
+        telefono: str,
+        media_id: str | None = None,
+        image_url: str | None = None,
+        caption: str | None = None,
+    ) -> bool:
+        """Envía una imagen. Implementación opcional; retorna False por defecto."""
+        return False
+
     async def validar_webhook(self, request: Request) -> dict | int | None:
         """Verificación GET del webhook (solo Meta la requiere). Retorna respuesta o None."""
         return None

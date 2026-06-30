@@ -15,6 +15,8 @@ from agent.lead_parser import extraer_datos_lead
 from agent.memory import inicializar_db, guardar_mensaje, obtener_historial
 from agent.providers import obtener_proveedor
 from agent.tools import obtener_y_limpiar_confirmadas
+from agent.client_loader import get_client_id, get_business_name
+from agent.whatsapp_media import send_menu_image_if_requested
 from integrations.google_sheets import guardar_lead, esta_configurado as sheets_activo
 from integrations.google_calendar import crear_evento_cita, esta_configurado as calendar_activo
 
@@ -27,6 +29,12 @@ logger = logging.getLogger("agentkit")
 
 proveedor = obtener_proveedor()
 PORT = int(os.getenv("PORT", 8000))
+CLIENT_ID = get_client_id()
+
+import re as _re
+import json as _json
+
+_PEDIDO_PREFIX = "[PEDIDO_RENZO:"
 
 
 @asynccontextmanager
@@ -34,9 +42,13 @@ async def lifespan(app: FastAPI):
     await inicializar_db()
     logger.info("Base de datos inicializada")
     logger.info(f"Servidor AgentKit corriendo en puerto {PORT}")
+    logger.info(f"Cliente cargado: {get_business_name()}" if CLIENT_ID else "Cliente: Valoz Digital (default)")
     logger.info(f"Proveedor de WhatsApp: {proveedor.__class__.__name__}")
     logger.info(f"Google Sheets: {'activo' if sheets_activo() else 'no configurado'}")
     logger.info(f"Google Calendar: {'activo' if calendar_activo() else 'no configurado'}")
+    if CLIENT_ID == "renzosnacks":
+        from integrations.loyverse import loyverse_is_enabled
+        logger.info(f"Loyverse: {'activo' if loyverse_is_enabled() else 'inactivo'}")
     yield
 
 
@@ -93,6 +105,40 @@ async def _procesar_citas_confirmadas():
         logger.error(f"Error en _procesar_citas_confirmadas: {e}")
 
 
+def _extraer_pedido_renzo(respuesta: str) -> tuple[dict | None, str]:
+    """
+    Si la respuesta contiene [PEDIDO_RENZO:{...}], extrae el JSON y retorna
+    (pedido_dict, respuesta_limpia). Si no hay pedido, retorna (None, respuesta).
+    Usa JSONDecoder para manejar objetos anidados correctamente.
+    """
+    if _PEDIDO_PREFIX not in respuesta:
+        return None, respuesta
+
+    try:
+        prefix_idx = respuesta.index(_PEDIDO_PREFIX)
+        json_start = prefix_idx + len(_PEDIDO_PREFIX)
+        decoder = _json.JSONDecoder()
+        pedido, json_end = decoder.raw_decode(respuesta, json_start)
+        # Encuentra el ']' de cierre del bloque [PEDIDO_RENZO:...]
+        close_idx = respuesta.index("]", json_end)
+        bloque = respuesta[prefix_idx : close_idx + 1]
+        respuesta_limpia = respuesta.replace(bloque, "").strip()
+        return pedido, respuesta_limpia
+    except Exception as e:
+        logger.warning(f"No se pudo parsear PEDIDO_RENZO: {e}")
+        return None, respuesta
+
+
+async def _procesar_pedido_renzosnacks(telefono: str, pedido: dict):
+    """Envía el pedido confirmado a Loyverse en background."""
+    try:
+        logger.info(f"Pedido confirmado — {telefono} | cliente: {pedido.get('nombre')}")
+        from integrations.loyverse import procesar_pedido_confirmado
+        await procesar_pedido_confirmado(telefono, pedido)
+    except Exception as e:
+        logger.error(f"Error procesando pedido Renzo Snacks [{telefono}]: {e}")
+
+
 async def _registrar_contacto(telefono: str, historial_completo: list[dict]):
     """Extrae datos estructurados del lead y los guarda en Sheets (fire-and-forget)."""
     try:
@@ -121,8 +167,16 @@ async def webhook_handler(request: Request):
             historial = await obtener_historial(msg.telefono)
             respuesta = await generar_respuesta(msg.texto, historial)
 
+            # Extraer pedido estructurado si el bot lo incluyó (solo Renzo Snacks)
+            pedido_confirmado = None
+            if CLIENT_ID == "renzosnacks":
+                pedido_confirmado, respuesta = _extraer_pedido_renzo(respuesta)
+
             await guardar_mensaje(msg.telefono, "user", msg.texto)
             await guardar_mensaje(msg.telefono, "assistant", respuesta)
+
+            # Enviar imagen del menú si el cliente la pidió (antes del texto)
+            await send_menu_image_if_requested(proveedor, msg.telefono, msg.texto)
 
             await proveedor.enviar_mensaje(msg.telefono, respuesta)
             logger.info(f"Respuesta a {msg.telefono}: {respuesta}")
@@ -134,6 +188,9 @@ async def webhook_handler(request: Request):
             ]
 
             # Integraciones en background — no bloquean la respuesta a WhatsApp
+            if pedido_confirmado:
+                logger.info(f"Pedido iniciado — {msg.telefono}")
+                asyncio.create_task(_procesar_pedido_renzosnacks(msg.telefono, pedido_confirmado))
             asyncio.create_task(_registrar_contacto(msg.telefono, historial_completo))
             asyncio.create_task(_procesar_citas_confirmadas())
 

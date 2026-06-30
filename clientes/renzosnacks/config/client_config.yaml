@@ -1,0 +1,183 @@
+# clientes/renzosnacks/config/client_config.yaml
+# Cliente: Renzo Snacks — Restaurante de alitas, boneless y papas preparadas
+# Activar con: CLIENT_ID=renzosnacks
+
+# ─── Datos del negocio ───────────────────────────────────────
+BUSINESS_NAME: "Renzo Snacks"
+BUSINESS_TYPE: "Restaurante / snacks"
+BUSINESS_DESCRIPTION: >
+  Somos un restaurante enfocado en alitas, boneless y papas preparadas.
+  Atendemos de lunes a sábado en horario nocturno. Ofrecemos servicio
+  a domicilio, para recoger y consumo en el local.
+
+# ─── Contacto y escalación ───────────────────────────────────
+CONTACT_NAME: "Equipo Renzo Snacks"
+CONTACT_PHONE: "9631000021"
+BUSINESS_WHATSAPP: "9631000021"
+
+# ─── Horario y ubicación ─────────────────────────────────────
+BUSINESS_HOURS: "Lunes a sábado de 7:00 p.m. a 10:30 p.m."
+BUSINESS_ADDRESS: "Primera Avenida Oriente Sur No. 74, Barrio San Sebastián"
+INSTAGRAM: "@renzo_snacks"
+FACEBOOK: "@renzosnacks"
+
+# ─── Personalidad del agente ─────────────────────────────────
+AGENT_NAME: "Asistente Renzo"
+TONE: "Amable, natural, breve y humano — como alguien del restaurante"
+
+# ─── Métodos de pago ─────────────────────────────────────────
+PAYMENT_METHODS:
+  - Efectivo
+  - Transferencia
+  - Tarjeta
+
+# ─── Tipos de servicio ───────────────────────────────────────
+SERVICE_TYPES:
+  - nombre: "Envío a domicilio"
+    nota: "Tiene costo extra según zona"
+  - nombre: "Consumo en el local"
+  - nombre: "Recoger en local"
+
+# ─── Proveedor WhatsApp ──────────────────────────────────────
+WHATSAPP_PROVIDER: "meta"
+# Placeholders — configurar en Railway cuando el número esté listo:
+# META_ACCESS_TOKEN: en .env
+# META_PHONE_NUMBER_ID: en .env
+# META_VERIFY_TOKEN: en .env
+
+# ─── Imagen del menú ─────────────────────────────────────────
+MENU_IMAGE_PATH: "clientes/renzosnacks/assets/menu_renzo_snacks.jpg"
+MENU_MEDIA_ID: ""    # Rellenar tras subir a Meta Media API
+MENU_IMAGE_URL: ""   # O usar URL pública si se hospeda externamente
+
+# ─── Intents para carga de contexto ─────────────────────────
+# Usa solo la sección del menú relevante según lo que pregunta el cliente.
+INTENTS:
+  menu:
+    - menú
+    - menu
+    - carta
+    - qué venden
+    - que venden
+    - qué tienen
+    - que tienen
+    - alitas
+    - boneless
+    - papas
+    - bebidas
+    - frappe
+    - bebida
+    - combo
+    - combos
+    - postres
+    - postre
+    - precios
+    - precio
+    - cuánto cuesta
+    - cuanto cuesta
+    - cuanto sale
+    - cuánto sale
+    - productos
+    - complementos
+    - salsas
+    - salsa
+    - waffles
+    - nachos
+    - dedos de queso
+    - aros
+    - sincronizadas
+    - quesigrill
+    - chicken
+    - horchata
+    - mangonada
+    - soda
+  pedido:
+    - quiero pedir
+    - quiero ordenar
+    - me das
+    - dame
+    - me pones
+    - pido
+    - ordenar
+    - orden
+    - voy a pedir
+    - pongo
+    - anota
+    - toma nota
+    - para llevar
+    - envío
+    - domicilio
+    - recoger
+    - para comer aquí
+    - para el local
+    - para confirmar
+    - confirmo
+    - sí confirmo
+    - si confirmo
+  ubicacion:
+    - dónde están
+    - donde estan
+    - dirección
+    - ubicación
+    - ubicacion
+    - cómo llego
+    - como llego
+    - dónde quedan
+    - mapa
+    - están en
+    - colonia
+    - barrio
+  horario:
+    - horario
+    - qué hora
+    - que hora
+    - abiertos
+    - abren
+    - cierran
+    - hasta qué hora
+    - hasta que hora
+    - cuándo atienden
+    - cuando atienden
+    - días de atención
+    - lunes
+    - sábado
+    - domingo
+  pago:
+    - pago
+    - pagar
+    - transferencia
+    - efectivo
+    - tarjeta
+    - cómo pago
+    - como pago
+    - formas de pago
+    - método de pago
+    - metodo de pago
+    - costo de envío
+    - precio del envío
+    - cobran el envío
+  faq:
+    - información
+    - informacion
+    - ayuda
+    - consulta
+    - pregunta
+
+INTENT_FILES:
+  menu: "menu.md"
+  pedido: "menu.md"
+  ubicacion: "faq.md"
+  horario: "faq.md"
+  pago: "politicas.md"
+  faq: "faq.md"
+
+FALLBACK_FILES: []
+
+# ─── Integración Loyverse ─────────────────────────────────────
+# Activar cuando las credenciales estén listas:
+LOYVERSE_ENABLED: false
+# Las credenciales van en .env, NO aquí:
+# LOYVERSE_ACCESS_TOKEN=
+# LOYVERSE_STORE_ID=
+# LOYVERSE_POS_DEVICE_ID=
+# LOYVERSE_EMPLOYEE_ID=

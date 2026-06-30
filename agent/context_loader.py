@@ -1,15 +1,21 @@
 # agent/context_loader.py — Carga selectiva de contexto según intención del mensaje
 # Evita enviar toda la base de conocimiento en cada turno. Carga solo lo relevante.
+# Soporta múltiples clientes via CLIENT_ID (ver agent/client_loader.py).
 
 import logging
 from pathlib import Path
 
+from agent.client_loader import (
+    get_knowledge_dir,
+    get_client_intents,
+    get_client_intent_files,
+    get_client_fallback_files,
+)
+
 logger = logging.getLogger("agentkit")
 
-KNOWLEDGE_DIR = Path("knowledge")
-
-# Palabras clave por intención — orden importa (más específico primero)
-INTENTS: dict[str, list[str]] = {
+# ─── Defaults de Valoz Digital ───────────────────────────────────
+_VALOZ_INTENTS: dict[str, list[str]] = {
     "objeciones": [
         "caro", "muy caro", "está caro", "mucho dinero", "no tengo presupuesto",
         "es mucho", "no me alcanza", "descuento", "rebaja", "precio menor",
@@ -37,8 +43,7 @@ INTENTS: dict[str, list[str]] = {
     ],
 }
 
-# Archivo de conocimiento por intención
-ARCHIVO_POR_INTENT: dict[str, str] = {
+_VALOZ_ARCHIVO_POR_INTENT: dict[str, str] = {
     "precios":    "precios.md",
     "servicios":  "servicios.md",
     "faq":        "faq.md",
@@ -46,8 +51,24 @@ ARCHIVO_POR_INTENT: dict[str, str] = {
     "politicas":  "politicas.md",
 }
 
-# Archivos de fallback si no existe el archivo específico
-FALLBACK_FILES = ["valoz_servicios.md"]
+_VALOZ_FALLBACK_FILES = ["valoz_servicios.md"]
+
+
+def _normalizar_intents(raw: dict) -> dict[str, list[str]]:
+    """Convierte intents del YAML (dict de str→list) al formato interno."""
+    return {k: list(v) for k, v in raw.items() if isinstance(v, list)}
+
+
+# Carga dinámica según CLIENT_ID (se evalúa al importar el módulo)
+_client_intents = get_client_intents()
+_client_files = get_client_intent_files()
+_client_fallback = get_client_fallback_files()
+
+KNOWLEDGE_DIR: Path = get_knowledge_dir()
+INTENTS: dict[str, list[str]] = _normalizar_intents(_client_intents) if _client_intents else _VALOZ_INTENTS
+ARCHIVO_POR_INTENT: dict[str, str] = _client_files if _client_files else _VALOZ_ARCHIVO_POR_INTENT
+FALLBACK_FILES: list[str] = _client_fallback if _client_fallback is not None else _VALOZ_FALLBACK_FILES
+
 FALLBACK_MAX_CHARS = 1200  # Limitar tokens en el fallback
 
 

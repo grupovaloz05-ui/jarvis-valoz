@@ -14,6 +14,11 @@ BUSINESS_DESCRIPTION: >
 CONTACT_NAME: "Equipo Renzo Snacks"
 CONTACT_PHONE: "9631000021"
 BUSINESS_WHATSAPP: "9631000021"
+BUSINESS_WHATSAPP_NUMBER: "9631000021"
+# NOTA: Antes de activar el número, decidir:
+#   a) Usar 9631000021 vía Meta Cloud API (requiere registro en Meta Business Manager)
+#   b) Evaluar coexistencia con WhatsApp Business App si aplica
+#   c) Usar un número nuevo dedicado solo al bot
 
 # ─── Horario y ubicación ─────────────────────────────────────
 BUSINESS_HOURS: "Lunes a sábado de 7:00 p.m. a 10:30 p.m."
@@ -34,9 +39,16 @@ PAYMENT_METHODS:
 # ─── Tipos de servicio ───────────────────────────────────────
 SERVICE_TYPES:
   - nombre: "Envío a domicilio"
-    nota: "Tiene costo extra según zona"
+    nota: "Costo extra aproximado de $50, sujeto a ubicación. Pedir dirección al cliente."
   - nombre: "Consumo en el local"
   - nombre: "Recoger en local"
+
+# ─── Reglas de negocio ───────────────────────────────────────
+DELIVERY_COST_APPROX: 50          # Costo de envío de referencia en pesos MXN
+DELIVERY_COST_NOTE: "El costo de envío se confirma según ubicación. $50 es referencia."
+PREP_TIME_MIN: 25                  # Tiempo mínimo de preparación en minutos
+PREP_TIME_MAX: 35                  # Tiempo máximo de preparación en minutos
+PREP_TIME_NOTE: "Se prepara al momento; puede variar según cantidad del pedido."
 
 # ─── Proveedor WhatsApp ──────────────────────────────────────
 WHATSAPP_PROVIDER: "meta"
@@ -49,6 +61,10 @@ WHATSAPP_PROVIDER: "meta"
 MENU_IMAGE_PATH: "clientes/renzosnacks/assets/menu_renzo_snacks.jpg"
 MENU_MEDIA_ID: ""    # Rellenar tras subir a Meta Media API
 MENU_IMAGE_URL: ""   # O usar URL pública si se hospeda externamente
+
+# ─── Logo ────────────────────────────────────────────────────
+LOGO_PATH: "clientes/renzosnacks/assets/logo_renzo_snacks.png"
+# PENDIENTE: El cliente indicó que ya envió el logo. Guardarlo en la ruta anterior.
 
 # ─── Intents para carga de contexto ─────────────────────────
 # Usa solo la sección del menú relevante según lo que pregunta el cliente.
@@ -174,6 +190,7 @@ INTENT_FILES:
 FALLBACK_FILES: []
 
 # ─── Integración Loyverse ─────────────────────────────────────
+# Todos los productos están cargados en Loyverse con precios confirmados por el cliente.
 # Activar cuando las credenciales estén listas:
 LOYVERSE_ENABLED: false
 # Las credenciales van en .env, NO aquí:
@@ -181,3 +198,25 @@ LOYVERSE_ENABLED: false
 # LOYVERSE_STORE_ID=
 # LOYVERSE_POS_DEVICE_ID=
 # LOYVERSE_EMPLOYEE_ID=
+# LOYVERSE_API_BASE_URL=https://api.loyverse.com/v1.0
+
+# ─── Flujo de pedido ──────────────────────────────────────────
+# El bot debe pedir en este orden:
+ORDER_FLOW:
+  - nombre
+  - pedido
+  - cantidad
+  - salsa (si aplica)
+  - bebida (si aplica)
+  - complementos (si aplica)
+  - modalidad         # envío / recoger / consumo en local
+  - direccion         # solo si modalidad = envío
+  - forma_de_pago
+  - comentarios_especiales
+# Después: mostrar resumen y pedir confirmación.
+# Solo tras confirmar: enviar a Loyverse (si LOYVERSE_ENABLED=true).
+
+# ─── Promociones ─────────────────────────────────────────────
+PROMOTIONS_FILE: "clientes/renzosnacks/knowledge/promociones.md"
+PROMOTIONS_UPDATE_DAY: "domingo"
+PROMOTIONS_UPDATE_NOTE: "Actualizar cada domingo con las promos de la semana."

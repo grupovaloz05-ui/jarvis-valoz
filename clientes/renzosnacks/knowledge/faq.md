@@ -54,7 +54,10 @@ Sí, cuatro combos: Pollito ($320), Gallina ($470), Gallo ($560) y Renzo Mix ($5
 ## Servicio a domicilio
 
 **¿Tienen servicio a domicilio?**
-Sí, hacemos envíos a domicilio con un costo extra según la zona.
+Sí, hacemos envíos a domicilio. El envío tiene un costo extra aproximado de $50, pero se confirma según tu ubicación.
+
+**¿Cuánto cuesta el envío?**
+El envío tiene un costo extra aproximado de $50, pero te lo confirmamos según tu ubicación. ¿Me pasas tu dirección?
 
 **¿Puedo pedir para recoger?**
 Sí, puedes pasar a recoger tu pedido al local.
@@ -64,10 +67,17 @@ Sí, también atendemos en el local.
 
 ---
 
+## Tiempos de preparación
+
+**¿Cuánto tarda mi pedido?**
+Normalmente tarda de 25 a 35 minutos, dependiendo de la cantidad del pedido. Todo se prepara al momento.
+
+---
+
 ## Pedidos
 
 **¿Cómo hago un pedido?**
-Escríbenos aquí por WhatsApp. Te tomamos el pedido y te confirmamos.
+Escríbenos aquí por WhatsApp. Te tomamos el pedido, te mostramos un resumen y esperamos tu confirmación antes de pasar a cocina.
 
 **¿Tienen número de WhatsApp para pedidos?**
 Sí, este mismo número: 9631000021.

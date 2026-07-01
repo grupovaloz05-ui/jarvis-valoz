@@ -12,12 +12,19 @@ al sistema del restaurante.
 
 **Integración: INACTIVA** — Las credenciales aún no están configuradas.
 
+**Confirmado por el cliente:**
+- Todos los productos están cargados en Loyverse con sus precios.
+- Los pedidos deben aparecer en Loyverse cuando la integración esté activa.
+- Se desea imprimir ticket doble si es posible (cocina + venta/caja).
+- Alternativa: usar iPad como pantalla de cocina (Loyverse KDS) e imprimir un solo ticket.
+- La impresora del restaurante es Bluetooth.
+
 Cuando la integración esté activa:
 - Los pedidos confirmados por WhatsApp se crean como receipts en Loyverse.
 - El equipo los ve en el POS y los prepara.
 - El bot informa al cliente que el pedido fue registrado.
 
-Cuando la integración NO está activa:
+Cuando la integración NO está activa (`LOYVERSE_ENABLED=false`):
 - El bot toma el pedido y lo muestra como resumen.
 - El pedido queda como "pendiente de confirmación humana".
 - El bot informa al cliente que el equipo confirmará.
@@ -68,6 +75,25 @@ LOYVERSE_API_BASE_URL=https://api.loyverse.com/v1.0
 - Si el dispositivo POS no está activo o no tiene impresora configurada, el receipt
   aparece en el sistema pero no se imprime automáticamente.
 - Para confirmar la impresión automática, probar con el LOYVERSE_POS_DEVICE_ID configurado.
+
+**Impresora Bluetooth:** Renzo Snacks usa impresora Bluetooth. La compatibilidad depende
+del POS físico y la configuración del dispositivo. No prometer impresión automática hasta
+probarlo con la cuenta real, POS real e impresora Bluetooth conectada.
+
+### Opción A — Doble impresión (cocina + venta)
+
+- Configurar dos impresoras en Loyverse POS: una para cocina y otra para caja/venta.
+- Al crear el receipt, Loyverse puede disparar ambas impresoras si están configuradas.
+- Esto se configura desde Loyverse POS → Ajustes → Impresoras, no desde el bot.
+- No implementado desde el bot; el bot solo crea el receipt.
+
+### Opción B — iPad como pantalla de cocina (Loyverse KDS)
+
+- Usar un iPad o tablet en cocina mostrando Loyverse KDS (Kitchen Display System).
+- Los pedidos llegan como tickets en pantalla; el equipo de cocina los ve sin imprimir.
+- Solo se imprime un ticket si así lo prefieren (para el cliente o caja).
+- El iPad y el POS deben estar en la misma red Wi-Fi.
+- Se configura desde Loyverse POS; el bot no interactúa con KDS directamente.
 
 ---
 

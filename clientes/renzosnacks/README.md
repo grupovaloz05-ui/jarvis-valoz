@@ -16,7 +16,9 @@ Agente de WhatsApp para **Renzo Snacks**, restaurante de alitas, boneless y papa
 | Instagram | @renzo_snacks |
 | Facebook | @renzosnacks |
 | Métodos de pago | Efectivo, Transferencia, Tarjeta |
-| Servicios | Envío a domicilio (con costo extra), recoger en local, consumo en local |
+| Servicios | Envío a domicilio (~$50), recoger en local, consumo en local |
+| Envío | ~$50 aproximado, se confirma según ubicación |
+| Preparación | 25 a 35 minutos (se prepara al momento) |
 
 ---
 
@@ -25,32 +27,49 @@ Agente de WhatsApp para **Renzo Snacks**, restaurante de alitas, boneless y papa
 ```
 clientes/renzosnacks/
 ├── assets/
-│   └── menu_renzo_snacks.jpg     ← imagen del menú (YA EXISTE)
+│   ├── menu_renzo_snacks.jpg          ← imagen del menú (YA EXISTE)
+│   └── logo_renzo_snacks.png          ← PENDIENTE: cliente ya envió el logo, agregar aquí
 ├── config/
-│   ├── client_config.yaml        ← configuración del negocio e intents
-│   └── prompts.yaml              ← system prompt del agente
+│   ├── client_config.yaml             ← configuración del negocio e intents
+│   └── prompts.yaml                   ← system prompt del agente
 ├── knowledge/
-│   ├── menu.md                   ← menú completo con precios
-│   ├── faq.md                    ← preguntas frecuentes
-│   ├── politicas.md              ← políticas de pago y servicio
-│   └── loyverse.md               ← documentación de Loyverse
-└── README.md                     ← este archivo
+│   ├── menu.md                        ← menú completo con precios (confirmado válido)
+│   ├── faq.md                         ← preguntas frecuentes
+│   ├── politicas.md                   ← políticas de pago y servicio
+│   ├── loyverse.md                    ← documentación de Loyverse
+│   └── promociones.md                 ← promos semanales (actualizar cada domingo)
+└── README.md                          ← este archivo
 ```
 
 ---
 
 ## Variables de entorno requeridas
 
-### Meta / WhatsApp (placeholder — número no conectado aún)
+### Meta / WhatsApp
 
 ```env
 CLIENT_ID=renzosnacks
 WHATSAPP_PROVIDER=meta
-META_ACCESS_TOKEN=            # Token de Meta Business (pendiente)
-META_PHONE_NUMBER_ID=         # ID del número en Meta (pendiente)
-META_VERIFY_TOKEN=            # Token de verificación del webhook (pendiente)
+META_ACCESS_TOKEN=
+META_PHONE_NUMBER_ID=
+META_VERIFY_TOKEN=
 BUSINESS_WHATSAPP_NUMBER=9631000021
 ```
+
+> **Decisión pendiente antes de activar el número 9631000021:**
+> - **Opción A:** Registrar ese mismo número en Meta Business Manager y usar Meta Cloud API.
+> - **Opción B:** Evaluar si puede coexistir con WhatsApp Business App instalada en el teléfono (Meta no siempre lo permite).
+> - **Opción C:** Usar un número nuevo dedicado exclusivamente al bot.
+>
+> Hasta que se tome esta decisión, las variables `META_*` deben quedar vacías.
+
+### Logo
+
+```
+clientes/renzosnacks/assets/logo_renzo_snacks.png
+```
+
+El cliente indicó que ya envió el logo. Si el archivo no existe aún, guardarlo en esa ruta.
 
 ### Imagen del menú
 
@@ -64,23 +83,23 @@ El bot intenta enviar la imagen con esta prioridad:
 1. Usar `RENZO_MENU_MEDIA_ID` si está definido.
 2. Usar `RENZO_MENU_IMAGE_URL` si está definido.
 3. Subir el archivo local a Meta Media API y usar el media_id resultante.
-4. Si todo falla, responde solo con texto y registra un warning en logs.
+4. Si todo falla, responde con texto y registra un warning en logs.
 
 ### Loyverse (integración pendiente)
 
 ```env
-LOYVERSE_ENABLED=false          # Cambiar a true cuando esté listo
-LOYVERSE_ACCESS_TOKEN=          # Token de API de Loyverse
-LOYVERSE_STORE_ID=              # ID de la tienda
-LOYVERSE_POS_DEVICE_ID=         # ID del dispositivo POS (opcional)
-LOYVERSE_EMPLOYEE_ID=           # ID del empleado asignado (opcional)
+LOYVERSE_ENABLED=false
+LOYVERSE_ACCESS_TOKEN=
+LOYVERSE_STORE_ID=
+LOYVERSE_POS_DEVICE_ID=
+LOYVERSE_EMPLOYEE_ID=
 LOYVERSE_API_BASE_URL=https://api.loyverse.com/v1.0
 ```
 
 ### API de Claude
 
 ```env
-ANTHROPIC_API_KEY=              # Requerido
+ANTHROPIC_API_KEY=
 ```
 
 ### Servidor
@@ -99,6 +118,81 @@ DATABASE_URL=sqlite+aiosqlite:///./agentkit.db
 **Este cliente NO usa Google Sheets.** Los pedidos van a Loyverse.
 Las variables `GOOGLE_SHEET_ID`, `GOOGLE_SERVICE_ACCOUNT_EMAIL` y `GOOGLE_PRIVATE_KEY`
 no deben configurarse para Renzo Snacks.
+
+---
+
+## Flujo del bot para pedidos
+
+El bot debe recopilar esta información antes de mostrar el resumen:
+
+1. **Nombre** del cliente
+2. **Pedido** (qué quiere)
+3. **Cantidad**
+4. **Salsa** (si aplica — alitas/boneless)
+5. **Bebida** (si aplica)
+6. **Complementos** (si aplica)
+7. **Modalidad:** envío a domicilio / recoger en local / consumo en local
+8. **Dirección** (solo si es envío — luego indicar costo ~$50 sujeto a ubicación)
+9. **Forma de pago**
+10. **Comentarios especiales**
+
+Luego mostrar resumen y pedir confirmación. **Solo tras confirmar**, enviar a Loyverse.
+
+### Ejemplo de resumen
+
+```
+Perfecto, te confirmo tu pedido:
+
+10 boneless con salsa mango habanero
+1 papas gajo
+Modalidad: envío
+Pago: transferencia
+Tiempo aproximado: 25 a 35 minutos
+Envío aproximado: $50, sujeto a ubicación
+
+¿Así lo confirmo?
+```
+
+### Mensaje de envío al pedir dirección
+
+> "El envío tiene un costo extra aproximado de $50, pero te confirmamos según tu ubicación. ¿Me pasas tu dirección?"
+
+### Mensaje de tiempo de preparación
+
+> "Normalmente tarda de 25 a 35 minutos, dependiendo de la cantidad del pedido."
+
+---
+
+## Promociones
+
+Las promociones cambian por semana y pueden variar por día.
+
+- **Archivo:** `clientes/renzosnacks/knowledge/promociones.md`
+- **Actualizar:** cada domingo con las promos de la semana.
+- **Si no hay promos cargadas:** el bot responde: *"Las promociones pueden cambiar por día. Te puedo confirmar con el equipo o tomar tu pedido con el menú actual."*
+- El bot nunca inventa promociones.
+
+---
+
+## Impresión de tickets y KDS
+
+Renzo Snacks desea que los pedidos lleguen a Loyverse y se impriman. La impresora del restaurante es **Bluetooth**.
+
+> No prometer impresión automática hasta probar con la cuenta real, POS real e impresora Bluetooth.
+
+### Opción A — Doble impresión (cocina + venta)
+
+- Configurar dos impresoras en Loyverse POS: una para cocina y otra para caja/venta.
+- Al crear el receipt desde la API, Loyverse puede disparar ambas impresoras si están configuradas.
+- Se configura en Loyverse POS → Ajustes → Impresoras. El bot no controla esto.
+
+### Opción B — iPad como pantalla de cocina (Loyverse KDS)
+
+- Instalar Loyverse KDS en un iPad o tablet en cocina.
+- El iPad muestra los pedidos en pantalla; el equipo de cocina los ve sin necesidad de impresión.
+- POS y KDS deben estar en la misma red Wi-Fi.
+- Solo se imprime un ticket si lo prefieren (para el cliente o caja).
+- Se configura desde Loyverse POS/KDS. El bot no interactúa con KDS directamente.
 
 ---
 
@@ -136,16 +230,41 @@ Bot: Las 10 piezas están en $170 e incluyen ranch y varitas. ¿Qué salsa te gu
 Cliente: Mango habanero
 Bot: ¿Lo quieres para envío a domicilio, recoger o consumo en local?
 
-Cliente: Domicilio, pago transferencia
-Bot: [pide nombre y dirección]
+Cliente: Domicilio
+Bot: El envío tiene un costo extra aproximado de $50, pero te confirmamos según tu ubicación. ¿Me pasas tu dirección?
 
-Cliente: [confirma]
-Bot: Muestra resumen → "¿Así lo confirmo?"
+Cliente: [da dirección], pago transferencia
+Bot: [muestra resumen] "¿Así lo confirmo?"
 
 Cliente: Sí confirmo
 Bot: [si Loyverse activo] "Listo, tu pedido fue registrado."
      [si Loyverse inactivo] "Listo, ya tengo los datos. Lo paso al equipo para confirmar."
 ```
+
+---
+
+## Qué falta para activar Loyverse
+
+- [ ] Decidir opción de número WhatsApp (ver sección Variables de entorno)
+- [ ] Obtener token de acceso de Loyverse (Configuración → Integraciones → API)
+- [ ] Copiar Store ID desde el dashboard
+- [ ] Configurar `LOYVERSE_ENABLED=true` y `LOYVERSE_ACCESS_TOKEN=...` en Railway
+- [ ] (Opcional) Agregar `LOYVERSE_POS_DEVICE_ID` para asignar pedidos al dispositivo físico
+- [ ] Probar con un pedido real y verificar que aparece en el POS
+- [ ] Probar impresión con impresora Bluetooth y decidir entre Opción A o Opción B
+- [ ] Guardar logo en `assets/logo_renzo_snacks.png`
+
+---
+
+## Qué falta para conectar el número real
+
+- [ ] Tomar decisión sobre el número (ver sección Variables de entorno)
+- [ ] Registrar el número en Meta Business Manager
+- [ ] Crear la app de WhatsApp Cloud API en Meta Developers
+- [ ] Obtener `META_PHONE_NUMBER_ID` y `META_ACCESS_TOKEN` (token de sistema)
+- [ ] Definir `META_VERIFY_TOKEN` (ej. `renzosnacks-2026`)
+- [ ] Configurar el webhook en Meta: `https://[tu-app].up.railway.app/webhook`
+- [ ] Activar la suscripción al campo `messages`
 
 ---
 
@@ -157,39 +276,6 @@ Bot: [si Loyverse activo] "Listo, tu pedido fue registrado."
 | `pendiente_revision` | Hay productos que no se encontraron en Loyverse |
 | `pendiente_confirmacion_humana` | Loyverse inactivo; requiere acción manual |
 | `error_loyverse` | Error de API; pedido en logs del servidor |
-
----
-
-## Qué falta para activar Loyverse
-
-- [ ] Obtener token de acceso de Loyverse (Configuración → Integraciones → API)
-- [ ] Copiar Store ID desde el dashboard
-- [ ] Configurar `LOYVERSE_ENABLED=true` y `LOYVERSE_ACCESS_TOKEN=...` en Railway
-- [ ] (Opcional) Agregar `LOYVERSE_POS_DEVICE_ID` para asignar pedidos al dispositivo físico
-- [ ] Probar con un pedido real y verificar que aparece en el POS
-
----
-
-## Qué falta para conectar el número real
-
-- [ ] Registrar el número 9631000021 en Meta Business Manager
-- [ ] Crear la app de WhatsApp Cloud API en Meta Developers
-- [ ] Obtener `META_PHONE_NUMBER_ID` y `META_ACCESS_TOKEN` (token de sistema)
-- [ ] Definir `META_VERIFY_TOKEN` (ej. `renzosnacks-2026`)
-- [ ] Configurar el webhook en Meta: `https://[tu-app].up.railway.app/webhook`
-- [ ] Activar la suscripción al campo `messages`
-
----
-
-## Limitaciones de impresión de tickets en Loyverse
-
-- La API de Loyverse permite crear receipts (recibos de venta).
-- La impresión automática depende del dispositivo POS físico y su configuración.
-- Si el POS está conectado a una impresora y el dispositivo está activo, el ticket
-  puede imprimirse al crear el receipt desde la API.
-- Sin `LOYVERSE_POS_DEVICE_ID` configurado, el receipt aparece en el sistema pero
-  puede no disparar la impresora automáticamente.
-- Verificar con el equipo de Renzo Snacks si tienen el POS conectado a impresora.
 
 ---
 

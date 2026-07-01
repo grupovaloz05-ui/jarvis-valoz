@@ -10,9 +10,18 @@
 
 ## Servicio a domicilio
 
-- El servicio a domicilio tiene un costo extra según la zona.
-- El equipo te indica el costo de envío al confirmar el pedido.
+- El servicio a domicilio tiene un costo extra aproximado de $50, sujeto a la ubicación.
+- Cuando el cliente pide envío, el bot debe pedir la dirección y decir: "El envío tiene un costo extra aproximado de $50, pero te confirmamos según tu ubicación."
+- El equipo confirma el costo exacto según la zona antes de procesar el pago.
 - El bot no puede garantizar el tiempo exacto de entrega; el equipo lo confirma.
+
+---
+
+## Tiempo de preparación
+
+- Los pedidos se preparan al momento del pedido.
+- El tiempo aproximado es de 25 a 35 minutos, dependiendo de la cantidad.
+- El bot debe informar: "Normalmente tarda de 25 a 35 minutos, dependiendo de la cantidad del pedido."
 
 ---
 

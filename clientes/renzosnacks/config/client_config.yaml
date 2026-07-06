@@ -15,10 +15,16 @@ CONTACT_NAME: "Equipo Renzo Snacks"
 CONTACT_PHONE: "9631000021"
 BUSINESS_WHATSAPP: "9631000021"
 BUSINESS_WHATSAPP_NUMBER: "9631000021"
-# NOTA: Antes de activar el número, decidir:
-#   a) Usar 9631000021 vía Meta Cloud API (requiere registro en Meta Business Manager)
-#   b) Evaluar coexistencia con WhatsApp Business App si aplica
-#   c) Usar un número nuevo dedicado solo al bot
+# NOTA: El número 9631000021 ya es conocido por los clientes de Renzo Snacks.
+# No asumir migración completa a Cloud API. Orden de opciones (ver README para detalle):
+#   a) RECOMENDADO — Coexistencia: WhatsApp Business App + Cloud API en el mismo número
+#      9631000021. El negocio conserva estados/historias/catálogo en la app; el bot usa
+#      Cloud API para responder y tomar pedidos. Debe probarse antes de prometerse como
+#      seguro.
+#   b) RIESGO — Migrar 9631000021 completo a Cloud API sin coexistencia: puede perder el
+#      uso normal de WhatsApp Business App (estados/historias). No ejecutar sin aprobación
+#      explícita del cliente.
+#   c) Número nuevo dedicado solo al bot, si la coexistencia no es viable.
 
 # ─── Horario y ubicación ─────────────────────────────────────
 BUSINESS_HOURS: "Lunes a sábado de 7:00 p.m. a 10:30 p.m."
@@ -220,3 +226,17 @@ ORDER_FLOW:
 PROMOTIONS_FILE: "clientes/renzosnacks/knowledge/promociones.md"
 PROMOTIONS_UPDATE_DAY: "domingo"
 PROMOTIONS_UPDATE_NOTE: "Actualizar cada domingo con las promos de la semana."
+
+# ─── Promociones por comando de administrador (SPEC — no implementado) ───────
+# Requiere lógica en el motor compartido (agent/) para verificar remitente y
+# persistir en runtime/base de datos. Ver README.md → "Actualización de
+# promociones por comandos de administrador (spec)". Las credenciales/listas
+# van en .env, NO aquí:
+# ADMIN_PHONE_NUMBERS=
+# PROMOTIONS_ENABLED=true
+PROMOTIONS_ADMIN_COMMANDS:
+  - "ACTUALIZAR PROMOS"
+  - "VER PROMOS"
+  - "BORRAR PROMOS"
+PROMOTIONS_ADMIN_REQUIRES_CONFIRMATION: true
+PROMOTIONS_ADMIN_STORAGE: "runtime_database"   # nunca Git

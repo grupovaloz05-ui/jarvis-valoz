@@ -7,7 +7,7 @@ import logging
 from contextlib import asynccontextmanager
 from datetime import datetime
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, HTMLResponse
 from dotenv import load_dotenv
 
 from agent.brain import generar_respuesta
@@ -35,6 +35,110 @@ import re as _re
 import json as _json
 
 _PEDIDO_PREFIX = "[PEDIDO_RENZO:"
+
+_EMBEDDED_SIGNUP_TEST_HTML = """<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Prueba Embedded Signup — WhatsApp</title>
+<style>
+  body { font-family: -apple-system, Arial, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; }
+  button { background: #1877f2; color: #fff; border: none; padding: 12px 20px; font-size: 15px; border-radius: 6px; cursor: pointer; }
+  button:disabled { background: #9db8e8; cursor: not-allowed; }
+  pre { background: #f2f2f2; padding: 16px; border-radius: 6px; white-space: pre-wrap; word-break: break-word; }
+  .warn { color: #b00020; font-weight: bold; }
+</style>
+</head>
+<body>
+  <h1>Prueba de Embedded Signup (WhatsApp)</h1>
+  <p>Esta página lanza el flujo de Embedded Signup de Meta directamente desde
+     este dominio (no desde business.facebook.com). Sirve solo para probar si
+     un número existente de WhatsApp Business App se puede conectar por
+     coexistencia.</p>
+  <p id="config-warning" class="warn"></p>
+  <button id="btn-login">Probar Embedded Signup</button>
+  <h2>Resultado</h2>
+  <pre id="result">(todavía no hay resultado)</pre>
+
+  <div id="fb-root"></div>
+  <script>
+    window.fbAsyncInit = function () {
+      FB.init({
+        appId: __META_APP_ID__,
+        cookie: true,
+        xfbml: false,
+        version: 'v21.0'
+      });
+    };
+  </script>
+  <script async defer crossorigin="anonymous"
+    src="https://connect.facebook.net/es_LA/sdk.js"></script>
+
+  <script>
+    const APP_ID = __META_APP_ID__;
+    const CONFIG_ID = __META_CONFIG_ID__;
+    const resultEl = document.getElementById('result');
+    const warnEl = document.getElementById('config-warning');
+    const btn = document.getElementById('btn-login');
+
+    if (!APP_ID || !CONFIG_ID) {
+      warnEl.textContent =
+        'Falta META_APP_ID o META_EMBEDDED_SIGNUP_CONFIG_ID en las variables ' +
+        'de entorno del servidor. Configúralas y recarga esta página.';
+      btn.disabled = true;
+    }
+
+    // Escucha los mensajes que Meta envía por window.postMessage durante el
+    // flujo de Embedded Signup (evento 'WA_EMBEDDED_SIGNUP').
+    window.addEventListener('message', (event) => {
+      if (!event.origin.endsWith('facebook.com')) return;
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type !== 'WA_EMBEDDED_SIGNUP') return;
+
+        const actual = document.getElementById('result').textContent;
+        const nuevo = 'Evento WA_EMBEDDED_SIGNUP recibido:\\n' +
+          JSON.stringify(data, null, 2) + '\\n\\n' + actual;
+        document.getElementById('result').textContent = nuevo;
+      } catch (e) {
+        // Ignora mensajes que no son JSON (otros usos del SDK de FB).
+      }
+    });
+
+    function mostrarResultadoLogin(response) {
+      const salida = {
+        code: (response.authResponse && response.authResponse.code) || null,
+        business_id: (response.authResponse && response.authResponse.business_id) || null,
+        waba_id: (response.authResponse && response.authResponse.waba_id) || null,
+        phone_number_id: (response.authResponse && response.authResponse.phone_number_id) || null,
+        error: response.error || (response.authResponse ? null : 'Login cancelado o sin authResponse'),
+      };
+      resultEl.textContent = JSON.stringify(salida, null, 2);
+    }
+
+    btn.addEventListener('click', () => {
+      if (!APP_ID || !CONFIG_ID) return;
+      resultEl.textContent = 'Abriendo Embedded Signup...';
+      FB.login(
+        function (response) {
+          mostrarResultadoLogin(response);
+        },
+        {
+          config_id: CONFIG_ID,
+          response_type: 'code',
+          override_default_response_type: true,
+          extras: {
+            feature: 'whatsapp_embedded_signup',
+            sessionInfoVersion: '3',
+          },
+          scope: 'business_management,whatsapp_business_management,whatsapp_business_messaging',
+        }
+      );
+    });
+  </script>
+</body>
+</html>
+"""
 
 
 @asynccontextmanager
@@ -68,6 +172,27 @@ async def health_check():
         "sheets": sheets_activo(),
         "calendar": calendar_activo(),
     }
+
+
+@app.get("/embedded-signup-test", response_class=HTMLResponse)
+async def embedded_signup_test():
+    """
+    Página de prueba para lanzar Meta Embedded Signup (WhatsApp) desde este
+    dominio, sin pasar por business.facebook.com como redirect_uri.
+
+    Solo lee META_APP_ID y META_EMBEDDED_SIGNUP_CONFIG_ID (no son secretos:
+    viajan al navegador igual con el flujo normal de FB.login). Nunca lee ni
+    imprime META_APP_SECRET. No guarda tokens ni códigos en el servidor.
+    """
+    app_id = os.getenv("META_APP_ID", "")
+    config_id = os.getenv("META_EMBEDDED_SIGNUP_CONFIG_ID", "")
+
+    html = _EMBEDDED_SIGNUP_TEST_HTML.replace(
+        "__META_APP_ID__", _json.dumps(app_id)
+    ).replace(
+        "__META_CONFIG_ID__", _json.dumps(config_id)
+    )
+    return HTMLResponse(content=html)
 
 
 @app.get("/webhook")

@@ -14,6 +14,12 @@ El equipo debe actualizar este archivo **cada domingo** con las promociones de l
 **Responsable:** Equipo Renzo Snacks / Administrador del bot.
 **Frecuencia:** Cada domingo antes de abrir.
 
+Este archivo es el **contenido versionado (Git)** que sirve de referencia/fallback. Existe
+además una especificación (no implementada aún) para que administradores autorizados
+actualicen promociones por comando de WhatsApp (`ACTUALIZAR PROMOS`, `VER PROMOS`,
+`BORRAR PROMOS`); esas actualizaciones se guardarían en runtime/base de datos, **nunca en
+Git**. Ver `README.md` → "Actualización de promociones por comandos de administrador (spec)".
+
 ---
 
 ## Comportamiento del bot cuando no hay promociones

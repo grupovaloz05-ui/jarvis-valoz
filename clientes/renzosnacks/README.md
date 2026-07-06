@@ -56,12 +56,56 @@ META_VERIFY_TOKEN=
 BUSINESS_WHATSAPP_NUMBER=9631000021
 ```
 
-> **Decisión pendiente antes de activar el número 9631000021:**
-> - **Opción A:** Registrar ese mismo número en Meta Business Manager y usar Meta Cloud API.
-> - **Opción B:** Evaluar si puede coexistir con WhatsApp Business App instalada en el teléfono (Meta no siempre lo permite).
-> - **Opción C:** Usar un número nuevo dedicado exclusivamente al bot.
+> **Decisión pendiente antes de activar el número 9631000021.**
+> El número **9631000021 ya es conocido por los clientes de Renzo Snacks**, por lo que
+> la migración completa a Cloud API **no debe asumirse como plan por defecto**. La opción
+> recomendada es intentar **coexistencia** antes de considerar cambiar de número.
 >
-> Hasta que se tome esta decisión, las variables `META_*` deben quedar vacías.
+> Hasta que se pruebe y confirme un escenario, las variables `META_*` deben quedar vacías.
+> Ver la sección **"Escenarios para el número de WhatsApp"** más abajo para el detalle completo.
+
+---
+
+## Escenarios para el número de WhatsApp
+
+### ESCENARIO RECOMENDADO — Coexistencia
+
+- Intentar **WhatsApp Business App + Cloud API en el mismo número** mediante la función de
+  coexistencia de Meta.
+- **Objetivo:** que Renzo conserve el número **9631000021** que sus clientes ya conocen.
+- El negocio seguiría usando **WhatsApp Business App** para estados/historias, catálogo y
+  manejo visual del chat, tal como lo hace hoy.
+- El **bot usaría Cloud API** sobre ese mismo número para responder mensajes, mandar el menú
+  y tomar pedidos.
+- **Esto debe probarse antes de prometerse como seguro.** La coexistencia tiene requisitos y
+  limitaciones de Meta (versión de la app, tipo de cuenta, disponibilidad por región) que no
+  están confirmados para este número. No comunicar al cliente que "va a funcionar" hasta
+  validarlo en la práctica.
+
+### ESCENARIO DE RIESGO — Migración completa sin coexistencia
+
+- Si el número 9631000021 se migra **completamente** a Cloud API sin activar coexistencia,
+  Renzo Snacks **podría perder el uso normal de WhatsApp Business App** en ese número,
+  incluyendo estados/historias.
+- **No recomendar ni ejecutar una migración completa sin aprobación explícita del cliente**,
+  informándole con claridad qué perdería (ver sección de Estados/Historias abajo).
+
+### Opción C — Número nuevo dedicado al bot
+
+- Sigue disponible como alternativa si la coexistencia no es viable, pero implica que los
+  clientes deban aprender un número distinto al que ya conocen. Considerar solo si el
+  escenario recomendado falla en las pruebas.
+
+---
+
+## Estados / Historias de WhatsApp
+
+- Los **estados de WhatsApp se manejan desde WhatsApp Business App**, no desde la API del bot
+  (Cloud API no tiene función de publicar estados).
+- Si el cliente quiere compartir historias de Instagram a WhatsApp, eso es una **operación
+  manual del negocio** hecha desde la app, **no es una función del bot**.
+- **No prometer publicación automática de estados/historias desde Cloud API** bajo ninguna
+  circunstancia — esa capacidad no existe en la API.
 
 ### Logo
 
@@ -165,12 +209,56 @@ Envío aproximado: $50, sujeto a ubicación
 
 ## Promociones
 
-Las promociones cambian por semana y pueden variar por día.
+Las promociones cambian por semana y pueden variar por día. El bot las mantiene como
+respuesta a clientes; la actualización puede hacerse de dos formas:
 
-- **Archivo:** `clientes/renzosnacks/knowledge/promociones.md`
-- **Actualizar:** cada domingo con las promos de la semana.
+- **Manual (actual):** editar `clientes/renzosnacks/knowledge/promociones.md` cada domingo.
+- **Por comando de administrador (spec, pendiente de implementar):** ver abajo.
 - **Si no hay promos cargadas:** el bot responde: *"Las promociones pueden cambiar por día. Te puedo confirmar con el equipo o tomar tu pedido con el menú actual."*
 - El bot nunca inventa promociones.
+
+### Actualización de promociones por comandos de administrador (spec)
+
+> **Estado: diseño/documentación, no implementado.** Requiere lógica en el motor compartido
+> (`agent/`) para verificar el remitente y persistir en base de datos runtime — no se
+> implementa dentro de `clientes/renzosnacks/` únicamente. Ver detalle de la decisión de
+> alcance más abajo.
+
+**Variables de entorno:**
+
+```env
+ADMIN_PHONE_NUMBERS=
+PROMOTIONS_ENABLED=true
+```
+
+- `ADMIN_PHONE_NUMBERS` es una lista de números autorizados (separados por coma), ninguno
+  cargado por defecto.
+- `PROMOTIONS_ENABLED` activa o desactiva esta función completa.
+
+**Comandos reservados a administradores:**
+
+| Comando | Acción |
+|---|---|
+| `ACTUALIZAR PROMOS` | Inicia el flujo para cargar/reemplazar las promociones de la semana. |
+| `VER PROMOS` | Muestra las promociones actualmente cargadas. |
+| `BORRAR PROMOS` | Elimina las promociones activas (vuelve al mensaje de "sin promociones"). |
+
+**Reglas:**
+
+- Solo los números listados en `ADMIN_PHONE_NUMBERS` pueden usar estos comandos. Un número
+  no administrador que escriba estos comandos debe ser tratado como mensaje normal de cliente.
+- El bot **debe pedir confirmación explícita** antes de guardar cualquier cambio de promos
+  (mostrar lo que va a guardar y esperar un "sí"/"confirmo" antes de aplicarlo).
+- Las promociones actualizadas por comando se guardan en **runtime/base de datos**
+  (la misma base sqlite que ya usa el proyecto vía `DATABASE_URL`), **nunca en Git**. El
+  archivo `promociones.md` sigue existiendo como contenido versionado de referencia/fallback,
+  pero no es el mecanismo de escritura de este flujo.
+
+**Por qué no se implementa el código aquí:** verificar el número del remitente contra
+`ADMIN_PHONE_NUMBERS` y persistir en base de datos requiere tocar el motor compartido
+(`agent/main.py`, `agent/memory.py`), no solo los archivos de `clientes/renzosnacks/`. Se
+mantiene como especificación documentada hasta que se decida implementarlo, para conservar a
+Renzo separado en su carpeta de cliente mientras tanto.
 
 ---
 
@@ -258,7 +346,11 @@ Bot: [si Loyverse activo] "Listo, tu pedido fue registrado."
 
 ## Qué falta para conectar el número real
 
-- [ ] Tomar decisión sobre el número (ver sección Variables de entorno)
+- [ ] Probar el **escenario recomendado de coexistencia** (WhatsApp Business App + Cloud API
+      en 9631000021) antes de prometer nada al cliente — ver "Escenarios para el número de
+      WhatsApp"
+- [ ] Si la coexistencia no es viable, obtener aprobación explícita del cliente antes de
+      considerar migración completa o número nuevo
 - [ ] Registrar el número en Meta Business Manager
 - [ ] Crear la app de WhatsApp Cloud API en Meta Developers
 - [ ] Obtener `META_PHONE_NUMBER_ID` y `META_ACCESS_TOKEN` (token de sistema)

@@ -30,7 +30,10 @@ _VALOZ_INTENTS: dict[str, list[str]] = {
         "agente", "bot", "página web", "landing", "contenido", "post",
         "carrusel", "reel", "redes sociales", "automatizar", "automatización",
         "instagram", "servicio", "ofrecen", "qué tienen", "qué hacen",
-        "qué incluye", "qué es",
+        "qué incluye", "qué es", "tarjeta", "tarjeta digital", "reseña",
+        "reseñas", "calificar", "calificación", "calificaciones", "opiniones",
+        "opinión", "reputación", "google", "código qr", "qr", "nfc",
+        "crm", "dashboard", "paquete", "paquetes",
     ],
     "faq": [
         "cómo funciona", "cuánto tiempo", "cuándo", "proceso", "entrega",

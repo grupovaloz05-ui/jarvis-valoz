@@ -209,56 +209,74 @@ Envío aproximado: $50, sujeto a ubicación
 
 ## Promociones
 
-Las promociones cambian por semana y pueden variar por día. El bot las mantiene como
-respuesta a clientes; la actualización puede hacerse de dos formas:
+Las promociones cambian por semana y pueden variar por día. Hay dos mecanismos,
+independientes entre sí:
 
-- **Manual (actual):** editar `clientes/renzosnacks/knowledge/promociones.md` cada domingo.
-- **Por comando de administrador (spec, pendiente de implementar):** ver abajo.
-- **Si no hay promos cargadas:** el bot responde: *"Las promociones pueden cambiar por día. Te puedo confirmar con el equipo o tomar tu pedido con el menú actual."*
-- El bot nunca inventa promociones.
+- **Manual vía Git (actual, siempre activo):** editar
+  `clientes/renzosnacks/knowledge/promociones.md` cada domingo. Sirve como fallback/
+  referencia que el agente de IA puede citar. Si está vacío, el bot responde:
+  *"Las promociones pueden cambiar por día. Te puedo confirmar con el equipo o tomar tu
+  pedido con el menú actual."*
+- **Por comando de administrador vía WhatsApp (implementado, deshabilitado por defecto):**
+  ver abajo. Cuando `promotion_settings.enabled: true`, las consultas de clientes sobre
+  promos ("promos", "promociones"...) se responden directo con la promoción guardada por
+  comando, sin pasar por el modelo de IA ni por `promociones.md`. Si no hay nada guardado,
+  responde: *"Por ahora no tengo una promo cargada, pero puedo pasarte el menú o ayudarte
+  con tu pedido."*
+- El bot nunca inventa promociones, en ninguno de los dos mecanismos.
 
-### Actualización de promociones por comandos de administrador (spec)
+### Actualización de promociones por comandos de administrador (implementado)
 
-> **Estado: diseño/documentación, no implementado.** Requiere lógica en el motor compartido
-> (`agent/`) para verificar el remitente y persistir en base de datos runtime — no se
-> implementa dentro de `clientes/renzosnacks/` únicamente. Ver detalle de la decisión de
-> alcance más abajo.
+> **Estado: implementado en el motor compartido** (`agent/promotions.py`), pero
+> **DESHABILITADO para Renzo Snacks** (`promotion_settings.enabled: false` en
+> `clientes/renzosnacks/config/client_config.yaml`) hasta que el negocio confirme
+> qué números serán administradores. Mientras esté deshabilitado, el bot funciona
+> exactamente igual que antes — sin esta función, usando solo `promociones.md`
+> como fallback de referencia.
 
-**Variables de entorno:**
+**Configuración (en `client_config.yaml`, no en `.env`):**
 
-```env
-ADMIN_PHONE_NUMBERS=
-PROMOTIONS_ENABLED=true
+```yaml
+admin_numbers:
+  - "521XXXXXXXXXX"
+
+promotion_settings:
+  enabled: false  # cambiar a true cuando el negocio confirme los números admin
+  allow_text_promos: true
+  allow_image_promos: true
+  current_promo_text_path: "clientes/renzosnacks/knowledge/promo_actual.md"
+  current_promo_image_path: "clientes/renzosnacks/assets/promos/current_promo.jpg"
 ```
 
-- `ADMIN_PHONE_NUMBERS` es una lista de números autorizados (separados por coma), ninguno
-  cargado por defecto.
-- `PROMOTIONS_ENABLED` activa o desactiva esta función completa.
+- `admin_numbers` es la lista de números autorizados. Vacía por defecto — nadie puede
+  actualizar promociones hasta que se agreguen números aquí.
+- `promo_actual.md` es un archivo **separado** de `promociones.md`: `promociones.md` sigue
+  siendo el contenido curado/versionado que se edita a mano cada domingo; `promo_actual.md`
+  es lo que el comando `ACTUALIZAR PROMO` sobrescribe. Así un comando de WhatsApp nunca borra
+  el archivo curado de referencia.
 
-**Comandos reservados a administradores:**
+**Comandos reservados a administradores (ver `README_WHATSAPP_IMPLEMENTATION_MODES.md` para el detalle general):**
 
 | Comando | Acción |
 |---|---|
-| `ACTUALIZAR PROMOS` | Inicia el flujo para cargar/reemplazar las promociones de la semana. |
-| `VER PROMOS` | Muestra las promociones actualmente cargadas. |
-| `BORRAR PROMOS` | Elimina las promociones activas (vuelve al mensaje de "sin promociones"). |
+| `ACTUALIZAR PROMO` | Guarda el texto y/o imagen que sigue al comando como la promoción actual. |
+| `VER PROMO ACTUAL` | Muestra la promoción guardada. |
+| `BORRAR PROMO` | Elimina la promoción actual. |
+| `AYUDA ADMIN` | Lista los comandos disponibles. |
+| `PREPARAR STORY` | Devuelve texto corto + imagen (si existe) para subir manualmente a estados. |
 
 **Reglas:**
 
-- Solo los números listados en `ADMIN_PHONE_NUMBERS` pueden usar estos comandos. Un número
-  no administrador que escriba estos comandos debe ser tratado como mensaje normal de cliente.
-- El bot **debe pedir confirmación explícita** antes de guardar cualquier cambio de promos
-  (mostrar lo que va a guardar y esperar un "sí"/"confirmo" antes de aplicarlo).
-- Las promociones actualizadas por comando se guardan en **runtime/base de datos**
-  (la misma base sqlite que ya usa el proyecto vía `DATABASE_URL`), **nunca en Git**. El
-  archivo `promociones.md` sigue existiendo como contenido versionado de referencia/fallback,
-  pero no es el mecanismo de escritura de este flujo.
-
-**Por qué no se implementa el código aquí:** verificar el número del remitente contra
-`ADMIN_PHONE_NUMBERS` y persistir en base de datos requiere tocar el motor compartido
-(`agent/main.py`, `agent/memory.py`), no solo los archivos de `clientes/renzosnacks/`. Se
-mantiene como especificación documentada hasta que se decida implementarlo, para conservar a
-Renzo separado en su carpeta de cliente mientras tanto.
+- Solo los números en `admin_numbers` pueden usar estos comandos. Un número no autorizado que
+  intente `ACTUALIZAR PROMO` (o cualquier otro comando admin) recibe un mensaje explicando que
+  no puede administrar promociones.
+- Los comandos administrativos se resuelven por keywords, **sin llamar al modelo de IA**.
+- Las promociones actualizadas por comando se guardan como archivos (`current_promo_text_path`
+  / `current_promo_image_path`), no en la base de datos sqlite ni en `promociones.md`.
+- Si el cliente pregunta "promos", "promociones" o similar, el bot responde con la promoción
+  actual (texto y/o imagen) sin usar IA; si no hay ninguna guardada, responde el mensaje
+  natural de siempre: *"Por ahora no tengo una promo cargada, pero puedo pasarte el menú o
+  ayudarte con tu pedido."*
 
 ---
 
@@ -375,6 +393,7 @@ Bot: [si Loyverse activo] "Listo, tu pedido fue registrado."
 
 ```
 Cliente cargado: Renzo Snacks
+Modo de implementación WhatsApp: no definido
 Proveedor de WhatsApp: ProveedorMeta
 Google Sheets: no configurado
 Google Calendar: no configurado

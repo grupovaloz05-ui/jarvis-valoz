@@ -10,9 +10,11 @@ from fastapi import Request
 class MensajeEntrante:
     """Mensaje normalizado — mismo formato sin importar el proveedor."""
     telefono: str       # Número del remitente
-    texto: str          # Contenido del mensaje
+    texto: str          # Contenido del mensaje (o caption, si es imagen)
     mensaje_id: str     # ID único del mensaje
     es_propio: bool     # True si lo envió el agente (se ignora)
+    tipo: str = "text"  # "text" | "image"
+    media_id: str = ""  # ID de media del proveedor si tipo == "image"
 
 
 class ProveedorWhatsApp(ABC):
@@ -40,4 +42,12 @@ class ProveedorWhatsApp(ABC):
 
     async def validar_webhook(self, request: Request) -> dict | int | None:
         """Verificación GET del webhook (solo Meta la requiere). Retorna respuesta o None."""
+        return None
+
+    async def subir_media(self, ruta_local: str) -> str | None:
+        """Sube un archivo local y retorna su media_id. Implementación opcional; retorna None por defecto."""
+        return None
+
+    async def descargar_media(self, media_id: str) -> tuple[bytes, str] | None:
+        """Descarga el contenido de un media entrante (ej. imagen recibida). Retorna (contenido, mime_type) o None."""
         return None

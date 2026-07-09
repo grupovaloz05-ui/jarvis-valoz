@@ -79,6 +79,28 @@ def get_business_name() -> str:
     return config.get("BUSINESS_NAME", "negocio")
 
 
+def get_admin_numbers() -> list[str]:
+    """Retorna los números autorizados para administrar promociones por WhatsApp."""
+    config = cargar_client_config()
+    numeros = config.get("admin_numbers")
+    if isinstance(numeros, list):
+        return [str(n) for n in numeros]
+    return []
+
+
+def get_whatsapp_implementation_mode() -> str:
+    """Retorna el modo de implementación de WhatsApp del cliente (ver README_WHATSAPP_IMPLEMENTATION_MODES.md)."""
+    config = cargar_client_config()
+    return config.get("whatsapp_implementation_mode", "") or ""
+
+
+def get_promotion_settings() -> dict:
+    """Retorna la config de promociones administrables del cliente, o {} si no aplica."""
+    config = cargar_client_config()
+    settings = config.get("promotion_settings")
+    return settings if isinstance(settings, dict) else {}
+
+
 def get_menu_image_config() -> dict:
     """Retorna config de imagen del menú para este cliente."""
     config = cargar_client_config()

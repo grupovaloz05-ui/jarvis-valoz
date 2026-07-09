@@ -128,6 +128,48 @@ async def send_whatsapp_image(
         return False
 
 
+async def download_whatsapp_media(
+    media_id: str,
+    access_token: str,
+    api_version: str = "v21.0",
+) -> tuple[bytes, str] | None:
+    """
+    Descarga el contenido de un media entrante de WhatsApp Cloud API a partir
+    de su media_id (ej. una imagen enviada por un administrador).
+    Retorna (contenido_bytes, mime_type) o None si falla.
+    """
+    if not access_token or not media_id:
+        logger.warning("download_whatsapp_media: falta access_token o media_id")
+        return None
+
+    meta_url = f"https://graph.facebook.com/{api_version}/{media_id}"
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            r = await client.get(meta_url, headers=headers)
+            if r.status_code != 200:
+                logger.error(f"Error consultando media {media_id}: {r.status_code} — {r.text}")
+                return None
+
+            data = r.json()
+            media_url = data.get("url")
+            mime_type = data.get("mime_type", "image/jpeg")
+            if not media_url:
+                logger.error(f"Respuesta de media {media_id} sin 'url': {data}")
+                return None
+
+            r2 = await client.get(media_url, headers=headers)
+            if r2.status_code != 200:
+                logger.error(f"Error descargando contenido de media {media_id}: {r2.status_code}")
+                return None
+
+            return r2.content, mime_type
+    except Exception as e:
+        logger.error(f"Excepción descargando media {media_id}: {e}")
+        return None
+
+
 async def get_or_upload_menu_media_id(
     image_path: str,
     access_token: str,

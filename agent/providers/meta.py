@@ -6,7 +6,7 @@ import logging
 import httpx
 from fastapi import Request
 from agent.providers.base import ProveedorWhatsApp, MensajeEntrante
-from agent.whatsapp_media import send_whatsapp_image, upload_whatsapp_media
+from agent.whatsapp_media import send_whatsapp_image, upload_whatsapp_media, download_whatsapp_media
 
 logger = logging.getLogger("agentkit")
 
@@ -44,6 +44,17 @@ class ProveedorMeta(ProveedorWhatsApp):
                             texto=msg.get("text", {}).get("body", ""),
                             mensaje_id=msg.get("id", ""),
                             es_propio=False,
+                            tipo="text",
+                        ))
+                    elif msg.get("type") == "image":
+                        imagen = msg.get("image", {})
+                        mensajes.append(MensajeEntrante(
+                            telefono=msg.get("from", ""),
+                            texto=imagen.get("caption", ""),
+                            mensaje_id=msg.get("id", ""),
+                            es_propio=False,
+                            tipo="image",
+                            media_id=imagen.get("id", ""),
                         ))
         return mensajes
 
@@ -96,5 +107,13 @@ class ProveedorMeta(ProveedorWhatsApp):
             ruta_local=ruta_local,
             access_token=self.access_token or "",
             phone_number_id=self.phone_number_id or "",
+            api_version=self.api_version,
+        )
+
+    async def descargar_media(self, media_id: str) -> tuple[bytes, str] | None:
+        """Descarga el contenido de un media entrante (ej. imagen de promoción)."""
+        return await download_whatsapp_media(
+            media_id=media_id,
+            access_token=self.access_token or "",
             api_version=self.api_version,
         )

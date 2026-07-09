@@ -15,8 +15,9 @@ from agent.lead_parser import extraer_datos_lead
 from agent.memory import inicializar_db, guardar_mensaje, obtener_historial
 from agent.providers import obtener_proveedor
 from agent.tools import obtener_y_limpiar_confirmadas
-from agent.client_loader import get_client_id, get_business_name
+from agent.client_loader import get_client_id, get_business_name, get_whatsapp_implementation_mode
 from agent.whatsapp_media import send_menu_image_if_requested
+from agent.promotions import manejar_mensaje_promocion
 from integrations.google_sheets import guardar_lead, esta_configurado as sheets_activo
 from integrations.google_calendar import crear_evento_cita, esta_configurado as calendar_activo
 
@@ -147,6 +148,7 @@ async def lifespan(app: FastAPI):
     logger.info("Base de datos inicializada")
     logger.info(f"Servidor AgentKit corriendo en puerto {PORT}")
     logger.info(f"Cliente cargado: {get_business_name()}" if CLIENT_ID else "Cliente: Valoz Digital (default)")
+    logger.info(f"Modo de implementación WhatsApp: {get_whatsapp_implementation_mode() or 'no definido'}")
     logger.info(f"Proveedor de WhatsApp: {proveedor.__class__.__name__}")
     logger.info(f"Google Sheets: {'activo' if sheets_activo() else 'no configurado'}")
     logger.info(f"Google Calendar: {'activo' if calendar_activo() else 'no configurado'}")
@@ -288,6 +290,15 @@ async def webhook_handler(request: Request):
                 continue
 
             logger.info(f"Mensaje de {msg.telefono}: {msg.texto}")
+
+            # Comandos de administrador de promociones y consultas de promos —
+            # se resuelven por keywords, sin llamar al modelo de IA (ver agent/promotions.py).
+            respuesta_promocion = await manejar_mensaje_promocion(proveedor, msg)
+            if respuesta_promocion is not None:
+                await guardar_mensaje(msg.telefono, "user", msg.texto or "[imagen]")
+                await guardar_mensaje(msg.telefono, "assistant", respuesta_promocion)
+                logger.info(f"Respuesta (promociones) a {msg.telefono}: {respuesta_promocion}")
+                continue
 
             historial = await obtener_historial(msg.telefono)
             respuesta = await generar_respuesta(msg.texto, historial)

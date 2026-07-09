@@ -223,20 +223,29 @@ ORDER_FLOW:
 # Solo tras confirmar: enviar a Loyverse (si LOYVERSE_ENABLED=true).
 
 # ─── Promociones ─────────────────────────────────────────────
+# promociones.md sigue siendo el contenido versionado de referencia/fallback
+# (actualizado a mano cada domingo). El sistema de promociones administrables
+# por WhatsApp (abajo) usa un archivo runtime aparte (promo_actual.md) para no
+# pisar este archivo curado.
 PROMOTIONS_FILE: "clientes/renzosnacks/knowledge/promociones.md"
 PROMOTIONS_UPDATE_DAY: "domingo"
 PROMOTIONS_UPDATE_NOTE: "Actualizar cada domingo con las promos de la semana."
 
-# ─── Promociones por comando de administrador (SPEC — no implementado) ───────
-# Requiere lógica en el motor compartido (agent/) para verificar remitente y
-# persistir en runtime/base de datos. Ver README.md → "Actualización de
-# promociones por comandos de administrador (spec)". Las credenciales/listas
-# van en .env, NO aquí:
-# ADMIN_PHONE_NUMBERS=
-# PROMOTIONS_ENABLED=true
-PROMOTIONS_ADMIN_COMMANDS:
-  - "ACTUALIZAR PROMOS"
-  - "VER PROMOS"
-  - "BORRAR PROMOS"
-PROMOTIONS_ADMIN_REQUIRES_CONFIRMATION: true
-PROMOTIONS_ADMIN_STORAGE: "runtime_database"   # nunca Git
+# ─── Números autorizados para administrar promociones por WhatsApp ──────────
+# Vacío por defecto — nadie puede actualizar promociones hasta que el cliente
+# confirme qué números deben ser administradores.
+admin_numbers: []
+# admin_numbers:
+#   - "521XXXXXXXXXX"
+
+# ─── Promociones administrables por WhatsApp (implementado en agent/promotions.py) ──
+# DESHABILITADO por defecto (enabled: false) hasta que Renzo Snacks apruebe qué
+# números serán administradores. Mientras esté deshabilitado, el bot funciona
+# exactamente igual que antes (usa solo promociones.md como fallback).
+# Comandos: ACTUALIZAR PROMO / VER PROMO ACTUAL / BORRAR PROMO / AYUDA ADMIN / PREPARAR STORY
+promotion_settings:
+  enabled: false
+  allow_text_promos: true
+  allow_image_promos: true
+  current_promo_text_path: "clientes/renzosnacks/knowledge/promo_actual.md"
+  current_promo_image_path: "clientes/renzosnacks/assets/promos/current_promo.jpg"

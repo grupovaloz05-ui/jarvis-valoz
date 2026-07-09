@@ -58,3 +58,23 @@ TONE: "Profesional, amigable, persuasivo y empático"
 
 # ─── Datos del proveedor WhatsApp ────────────────────────────
 WHATSAPP_PROVIDER: "meta"          # meta | twilio
+
+# ─── Modo de implementación de WhatsApp ──────────────────────
+# Ver README_WHATSAPP_IMPLEMENTATION_MODES.md para el detalle de cada opción,
+# sus riesgos y cuándo recomendarla al cliente.
+whatsapp_implementation_mode: ""   # NUMERO_PRINCIPAL_API | NUMERO_SECUNDARIO_API | COEXISTENCIA_OFICIAL
+
+# ─── Números autorizados para administrar promociones por WhatsApp ──────────
+# Si se deja vacío, nadie puede actualizar promociones (comportamiento por defecto).
+admin_numbers: []
+# admin_numbers:
+#   - "521XXXXXXXXXX"
+
+# ─── Promociones administrables por WhatsApp ─────────────────
+# Si se omite esta sección o enabled=false, el bot funciona normal — sin esta función.
+promotion_settings:
+  enabled: false
+  allow_text_promos: true
+  allow_image_promos: true
+  current_promo_text_path: "knowledge/promociones.md"
+  current_promo_image_path: "assets/promos/current_promo.jpg"

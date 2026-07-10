@@ -50,7 +50,10 @@ def obtener_mensaje_fallback() -> str:
     return config.get("fallback_message", "Disculpa, no entendí tu mensaje. ¿Podrías reformularlo?")
 
 
-async def generar_respuesta(mensaje: str, historial: list[dict]) -> str:
+_CANAL_NOMBRE = {"instagram": "Instagram", "facebook": "Facebook Messenger"}
+
+
+async def generar_respuesta(mensaje: str, historial: list[dict], canal: str = "whatsapp") -> str:
     if not mensaje or len(mensaje.strip()) < 2:
         return obtener_mensaje_fallback()
 
@@ -63,6 +66,20 @@ async def generar_respuesta(mensaje: str, historial: list[dict]) -> str:
             system_prompt
             + "\n\n---\n## Contexto adicional para este turno\n\n"
             + conocimiento
+        )
+
+    # Canal distinto de WhatsApp: mismo tono, pero invita a continuar por WhatsApp
+    # cuando el cliente muestre intención real de avanzar.
+    if canal != "whatsapp":
+        nombre_canal = _CANAL_NOMBRE.get(canal, canal)
+        link = os.getenv("VALOZ_WHATSAPP_LINK", "https://wa.me/529615805721")
+        system_prompt = (
+            system_prompt
+            + f"\n\n---\n## Canal actual: {nombre_canal}\n\n"
+            + f"Estás respondiendo por {nombre_canal}, no por WhatsApp. Mantén el mismo tono "
+            + "comercial y las mismas reglas. Si el cliente muestra intención real de avanzar "
+            + "(quiere cotizar, contratar, o pide seguir la conversación en otro lado), incluye "
+            + f"este enlace para continuar por WhatsApp: {link}"
         )
 
     # Limitar historial para reducir tokens por turno

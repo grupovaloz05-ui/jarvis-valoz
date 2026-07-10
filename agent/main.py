@@ -13,7 +13,14 @@ from dotenv import load_dotenv
 from agent.brain import generar_respuesta
 from agent.lead_parser import extraer_datos_lead
 from agent.memory import inicializar_db, guardar_mensaje, obtener_historial
-from agent.providers import obtener_proveedor
+from agent.providers import (
+    obtener_proveedor,
+    instagram_enabled,
+    facebook_messenger_enabled,
+    obtener_proveedor_instagram,
+    obtener_proveedor_facebook,
+)
+from agent.social_channels import procesar_mensaje_social, procesar_comentario_social
 from agent.tools import obtener_y_limpiar_confirmadas
 from agent.client_loader import get_client_id, get_business_name, get_whatsapp_implementation_mode
 from agent.whatsapp_media import send_menu_image_if_requested
@@ -25,8 +32,20 @@ load_dotenv()
 
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 log_level = logging.DEBUG if ENVIRONMENT == "development" else logging.INFO
+
+# Configuración explícita del logger "agentkit": no depender de logging.basicConfig(),
+# que es un no-op si el proceso que arrancó el server (uvicorn/gunicorn en Railway) ya
+# configuró handlers en el logger root antes de importar este módulo — eso puede dejar
+# el logger en nivel WARNING y tragarse silenciosamente todos los logger.info()/warning()
+# de este archivo, aunque el access log ("POST /webhook 200 OK") sí se vea.
 logging.basicConfig(level=log_level)
 logger = logging.getLogger("agentkit")
+logger.setLevel(log_level)
+if not logger.handlers:
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+    logger.addHandler(_handler)
+logger.propagate = False
 
 proveedor = obtener_proveedor()
 PORT = int(os.getenv("PORT", 8000))
@@ -276,13 +295,118 @@ async def _registrar_contacto(telefono: str, historial_completo: list[dict]):
         logger.error(f"Error en _registrar_contacto: {e}")
 
 
+def _tipo_evento(object_type: str | None) -> str:
+    """Clasifica el evento entrante — whatsapp | instagram | facebook | unknown."""
+    if object_type == "whatsapp_business_account":
+        return "whatsapp"
+    if object_type == "instagram":
+        return "instagram"
+    if object_type == "page":
+        return "facebook"
+    return "unknown"
+
+
+def _log_evento_webhook(object_type: str | None, body: dict) -> str:
+    """
+    Loguea de forma segura qué llegó al webhook: tipo de evento y estructura básica
+    del payload (object, keys de entry/messaging/changes, field, sender/recipient id,
+    texto de mensaje o comentario si existe). Nunca loguea tokens ni headers —
+    solo campos del payload entrante, que Meta nunca incluye credenciales en él.
+    """
+    tipo = _tipo_evento(object_type)
+    entries = body.get("entry", []) or []
+    logger.info(f"[WEBHOOK] tipo_evento={tipo} object={body.get('object', '(sin object)')} entries={len(entries)}")
+
+    for i, entry in enumerate(entries):
+        logger.info(f"[WEBHOOK] entry[{i}] keys={list(entry.keys())}")
+
+        for j, evento in enumerate(entry.get("messaging", []) or []):
+            mensaje = evento.get("message", {}) or {}
+            logger.info(
+                f"[WEBHOOK] messaging[{j}] keys={list(evento.keys())} "
+                f"sender_id={(evento.get('sender') or {}).get('id', '(sin sender)')} "
+                f"recipient_id={(evento.get('recipient') or {}).get('id', '(sin recipient)')} "
+                f"message_text={mensaje.get('text', '(sin texto)')!r}"
+            )
+
+        for k, change in enumerate(entry.get("changes", []) or []):
+            value = change.get("value", {}) or {}
+            texto_comentario = value.get("text") or value.get("message") or "(sin texto)"
+            logger.info(
+                f"[WEBHOOK] changes[{k}] keys={list(change.keys())} "
+                f"field={change.get('field', '(sin field)')} "
+                f"comment_text={texto_comentario!r}"
+            )
+
+    return tipo
+
+
+async def _manejar_webhook_social(object_type: str, request: Request):
+    """
+    Enruta eventos de Instagram (DMs y comentarios) o Facebook Messenger (DMs y
+    comentarios). Si el canal está deshabilitado o falta configuración, loguea un
+    warning y no rompe nada — WhatsApp sigue funcionando igual.
+    """
+    canal = "instagram" if object_type == "instagram" else "facebook"
+
+    if CLIENT_ID not in ("", "valoz"):
+        logger.warning(
+            f"Evento de {canal} recibido pero este despliegue no es Jarvis Valoz "
+            f"(CLIENT_ID={CLIENT_ID!r}) — ignorando"
+        )
+        return
+
+    if canal == "instagram" and not instagram_enabled():
+        logger.warning("Evento Instagram recibido pero INSTAGRAM_ENABLED=false")
+        return
+    if canal == "facebook" and not facebook_messenger_enabled():
+        logger.warning("Evento Facebook recibido pero FACEBOOK_MESSENGER_ENABLED=false")
+        return
+
+    proveedor_social = obtener_proveedor_instagram() if canal == "instagram" else obtener_proveedor_facebook()
+
+    mensajes = await proveedor_social.parsear_webhook(request)
+    logger.info(f"[WEBHOOK] {canal}: {len(mensajes)} mensaje(s) de DM parseado(s)")
+    for msg in mensajes:
+        if msg.es_propio:
+            continue
+        if not msg.texto or not msg.texto.strip():
+            logger.info(f"[{canal}] Evento sin texto útil (sender={msg.telefono}) — no se llama a Claude")
+            continue
+        logger.info(f"Mensaje de {canal} ({msg.telefono}): {msg.texto}")
+        await procesar_mensaje_social(proveedor_social, canal, msg.telefono, msg.texto)
+
+    comentarios = await proveedor_social.parsear_comentarios(request)
+    logger.info(f"[WEBHOOK] {canal}: {len(comentarios)} comentario(s) parseado(s)")
+    for c in comentarios:
+        if not c.comentario_id:
+            continue
+        if not c.texto or not c.texto.strip():
+            logger.info(f"[{canal}] Comentario sin texto útil (id={c.comentario_id}) — no se procesa")
+            continue
+        logger.info(f"Comentario en {canal} ({c.comentario_id}): {c.texto}")
+        await procesar_comentario_social(proveedor_social, canal, c.comentario_id, c.texto, c.autor_id)
+
+
 @app.post("/webhook")
 async def webhook_handler(request: Request):
     """
-    Recibe mensajes de WhatsApp, genera respuesta con Claude y la envía.
-    Dispara integraciones con Google Sheets y Calendar en background.
+    Recibe mensajes de WhatsApp, Instagram y Facebook Messenger, genera respuesta
+    con Claude y la envía. Dispara integraciones con Google Sheets y Calendar en
+    background.
     """
     try:
+        body = await request.json()
+        object_type = body.get("object")
+        tipo = _log_evento_webhook(object_type, body)
+
+        if object_type in ("instagram", "page"):
+            await _manejar_webhook_social(object_type, request)
+            return {"status": "ok"}
+
+        if tipo == "unknown":
+            logger.warning(f"[WEBHOOK] object desconocido/ausente: {object_type!r} — se intenta procesar como WhatsApp igualmente")
+
         mensajes = await proveedor.parsear_webhook(request)
 
         for msg in mensajes:

@@ -9,12 +9,22 @@ from fastapi import Request
 @dataclass
 class MensajeEntrante:
     """Mensaje normalizado — mismo formato sin importar el proveedor."""
-    telefono: str       # Número del remitente
+    telefono: str       # Identificador del remitente (número, PSID o IGSID según el canal)
     texto: str          # Contenido del mensaje (o caption, si es imagen)
     mensaje_id: str     # ID único del mensaje
     es_propio: bool     # True si lo envió el agente (se ignora)
     tipo: str = "text"  # "text" | "image"
     media_id: str = ""  # ID de media del proveedor si tipo == "image"
+    canal: str = "whatsapp"  # "whatsapp" | "instagram" | "facebook"
+
+
+@dataclass
+class ComentarioEntrante:
+    """Comentario normalizado recibido en una publicación de Instagram o Facebook."""
+    comentario_id: str
+    texto: str
+    autor_id: str
+    canal: str  # "instagram" | "facebook"
 
 
 class ProveedorWhatsApp(ABC):
@@ -51,3 +61,11 @@ class ProveedorWhatsApp(ABC):
     async def descargar_media(self, media_id: str) -> tuple[bytes, str] | None:
         """Descarga el contenido de un media entrante (ej. imagen recibida). Retorna (contenido, mime_type) o None."""
         return None
+
+    async def parsear_comentarios(self, request: Request) -> list["ComentarioEntrante"]:
+        """Extrae comentarios entrantes (Instagram/Facebook). Implementación opcional; retorna [] por defecto."""
+        return []
+
+    async def responder_comentario_privado(self, comentario_id: str, mensaje: str) -> bool:
+        """Envía una respuesta privada (DM) a partir de un comentario. Implementación opcional; retorna False por defecto."""
+        return False

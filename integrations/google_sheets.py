@@ -126,23 +126,14 @@ def aplicar_formato_sheet(ws) -> None:
         _limpiar_reglas_condicionales(ws)
 
         visual = []
-        datos_range    = {"sheetId": sheet_id, "startRowIndex": 1, "endRowIndex": 1000, "startColumnIndex": 0, "endColumnIndex": num_cols}
         urgencia_range = {"sheetId": sheet_id, "startRowIndex": 1, "endRowIndex": 1000, "startColumnIndex": 7, "endColumnIndex": 8}
         estado_range   = {"sheetId": sheet_id, "startRowIndex": 1, "endRowIndex": 1000, "startColumnIndex": 9, "endColumnIndex": 10}
 
-        # Filas alternas
-        visual.append({
-            "addConditionalFormatRule": {
-                "rule": {
-                    "ranges": [datos_range],
-                    "booleanRule": {
-                        "condition": {"type": "CUSTOM_FORMULA", "values": [{"userEnteredValue": "=MOD(ROW(),2)=0"}]},
-                        "format": {"backgroundColor": {"red": 0.95, "green": 0.97, "blue": 1.0}},
-                    },
-                },
-                "index": 0,
-            }
-        })
+        # Nota: se eliminó la regla de filas alternas (CUSTOM_FORMULA "=MOD(ROW(),2)=0") —
+        # la API de Sheets la rechaza con "Invalid ConditionValue.userEnteredValue" en
+        # cuentas donde CUSTOM_FORMULA en addConditionalFormatRule no evalúa ROW() como
+        # se espera. No es crítico: preferimos guardar el lead sin ese detalle visual
+        # antes que arriesgar el guardado por un warning de formato.
 
         # Urgencia: Alta=rojo, Media=amarillo, Baja=verde
         for idx, (valor, color) in enumerate([
@@ -159,7 +150,7 @@ def aplicar_formato_sheet(ws) -> None:
                             "format": {"backgroundColor": color},
                         },
                     },
-                    "index": 1 + idx,
+                    "index": idx,
                 }
             })
 
@@ -190,7 +181,7 @@ def aplicar_formato_sheet(ws) -> None:
                             "format": {"backgroundColor": color},
                         },
                     },
-                    "index": 4 + idx,
+                    "index": 3 + idx,
                 }
             })
 

@@ -96,6 +96,36 @@ def _requiere_atencion_directa(normalizado: str) -> bool:
     return any(kw in normalizado for kw in _KW_NO_PUEDE_WHATSAPP + _KW_URGENTE)
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Intención comercial — decide si un DM o comentario se guarda como lead en
+# Sheets. Saludos, agradecimientos, emojis sueltos, spam o rechazos ("no me
+# interesa") NO cuentan como intención aunque contengan alguna palabra suelta.
+# ─────────────────────────────────────────────────────────────────────────────
+_KW_INTENCION_COMERCIAL = (
+    "precio", "precios", "info", "informes", "paquete", "paquetes", "bot", "bots",
+    "agente", "agentes", "automatizacion", "automatizar", "pagina", "sitio web",
+    "web", "redes", "contenido", "tarjeta", "tarjetas", "resena", "resenas",
+    "calificaciones", "whatsapp", "quiero", "me interesa", "cotizacion", "costos",
+    "cuanto", "quiero contratar", "quiero empezar", "necesito eso", "me urge",
+)
+# Palabras cortas que solo cuentan con límite de palabra completa, para evitar
+# falsos positivos por substring (ej. "ia" dentro de "todavia" o "envia").
+_KW_INTENCION_COMERCIAL_PALABRA = ("ia",)
+
+
+def _tiene_intencion_comercial(normalizado: str) -> bool:
+    """
+    True si el mensaje muestra interés comercial real. Los rechazos ("no me
+    interesa", "no gracias") se revisan primero — "no me interesa" no debe
+    contar como intención solo porque contiene la frase "me interesa".
+    """
+    if any(kw in normalizado for kw in _KW_FRIO):
+        return False
+    if any(kw in normalizado for kw in _KW_INTENCION_COMERCIAL):
+        return True
+    return any(re.search(rf"\b{kw}\b", normalizado) for kw in _KW_INTENCION_COMERCIAL_PALABRA)
+
+
 def _respuesta_corta_dm(texto: str) -> str:
     """
     Respuesta breve y natural para Instagram DM / Facebook Messenger. Nunca da
@@ -128,6 +158,14 @@ def _respuesta_corta_dm(texto: str) -> str:
         return f"Gracias por escribirnos. Si después necesitas automatización, web o marketing, puedes contactarnos por WhatsApp: {link}"
 
     return f"¡Claro! Te paso la info por WhatsApp para atenderte mejor: {link}"
+
+
+def _respuesta_sin_intencion() -> str:
+    """Respuesta corta para mensajes sin intención comercial (no se guardan como lead)."""
+    return (
+        "¡Hola! Si buscas información sobre agentes IA, páginas web o automatización, "
+        f"escríbenos por WhatsApp: {_link_whatsapp()}"
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -188,19 +226,11 @@ def clasificar_calidad_lead(texto: str) -> str:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Palabras clave que disparan un mensaje privado cuando alguien comenta en una
-# publicación de Instagram o Facebook (sin acentos, en minúsculas).
+# Comentarios en publicaciones de Instagram/Facebook: solo se responde y se
+# guarda lead si el comentario tiene la misma intención comercial que un DM
+# (comparte la lista de keywords _KW_INTENCION_COMERCIAL). Un comentario tipo
+# "jajaja" no se responde ni se guarda.
 # ─────────────────────────────────────────────────────────────────────────────
-_COMMENT_KEYWORDS = (
-    "info", "precio", "precios", "paquete", "paquetes", "bot", "bots", "agente",
-    "automatizacion", "automatizar", "web", "pagina", "sitio", "redes", "contenido",
-    "tarjeta", "resena", "resenas", "calificaciones", "whatsapp", "quiero",
-    "me interesa", "informes", "costos", "cuanto", "cotizacion",
-    "inteligencia artificial",
-)
-# Palabras cortas que solo cuentan con límite de palabra completa, para evitar
-# falsos positivos por substring (ej. "ia" dentro de "todavia" o "envia").
-_COMMENT_KEYWORDS_PALABRA = ("ia",)
 
 # Variaciones cortas de respuesta pública al comentario — nunca se vende en público,
 # solo se avisa que se mandó DM. Se elige una al azar para sonar natural.
@@ -212,10 +242,7 @@ _RESPUESTAS_PUBLICAS_COMENTARIO = (
 
 
 def detectar_keyword_comentario(texto: str) -> bool:
-    normalizado = _normalizar(texto)
-    if any(kw in normalizado for kw in _COMMENT_KEYWORDS):
-        return True
-    return any(re.search(rf"\b{kw}\b", normalizado) for kw in _COMMENT_KEYWORDS_PALABRA)
+    return _tiene_intencion_comercial(_normalizar(texto))
 
 
 async def _guardar_lead_social(datos: dict, contexto: str) -> None:
@@ -235,14 +262,11 @@ def _lead_dm_directo(canal: str, identificador: str, texto: str, calidad: str, a
     etiqueta = _CANAL_DM.get(canal, canal)
     extracto = texto.strip()[:200]
     accion = (
-        f"atención directa en {_NOMBRE_CANAL.get(canal, canal)} (usuario pidió no usar WhatsApp o urgencia)"
+        f"Se atendió directamente en {_NOMBRE_CANAL.get(canal, canal)} (usuario no podía/quería usar WhatsApp o era urgente)."
         if atencion_directa
-        else "enviado a WhatsApp"
+        else "Se envió link de WhatsApp."
     )
-    resumen = (
-        f"Canal: {etiqueta}. Usuario escribió: \"{extracto}\". "
-        f"Acción: {accion}."
-    )
+    resumen = f'Canal: {etiqueta}. Usuario escribió: "{extracto}". {accion}'
     return {
         "telefono": identificador,
         "nombre": VALOR_VACIO,
@@ -258,6 +282,35 @@ def _lead_dm_directo(canal: str, identificador: str, texto: str, calidad: str, a
     }
 
 
+async def _enviar_respuesta_dm(proveedor, canal: str, sender_id: str, respuesta: str) -> bool:
+    """Envía la respuesta de un DM y loguea cada paso (nunca lanza excepción hacia arriba)."""
+    tag = f"[{canal} DM]"
+    logger.info(f"{tag} respuesta_preparada={respuesta!r} — sender={sender_id}")
+
+    faltantes = _variables_faltantes(canal)
+    if faltantes:
+        logger.warning(
+            f"{tag} No se puede responder — variable(s) de entorno faltante(s) o vacía(s): "
+            f"{', '.join(faltantes)} (el lead se guarda igual)"
+        )
+
+    logger.info(f"{tag} enviando respuesta... — sender={sender_id}")
+    try:
+        enviado = await proveedor.enviar_mensaje(sender_id, respuesta)
+    except Exception as e:
+        logger.error(f"{tag} error enviando respuesta: {e}")
+        return False
+
+    if enviado:
+        logger.info(f"{tag} respuesta enviada OK — sender={sender_id} — texto={respuesta!r}")
+    else:
+        logger.warning(
+            f"{tag} respuesta enviada error — sender={sender_id} "
+            f"(revisa META_PAGE_ACCESS_TOKEN, META_PAGE_ID/META_INSTAGRAM_ACCOUNT_ID y permisos)"
+        )
+    return enviado
+
+
 async def procesar_mensaje_social(proveedor, canal: str, sender_id: str, texto: str):
     """
     Responde un DM de Instagram o Facebook Messenger. Por defecto redirige a
@@ -265,6 +318,11 @@ async def procesar_mensaje_social(proveedor, canal: str, sender_id: str, texto: 
     dice que no puede usar WhatsApp, que le urge, o pide respuesta ahí mismo, se
     queda respondiendo breve en el mismo canal. Nunca llama a Claude — usa lógica
     directa por keywords, clasifica el lead y lo guarda en Sheets.
+
+    Solo se guarda un lead en Sheets si el mensaje tiene intención comercial
+    visible (o si el usuario pidió atención directa/urgente). Saludos,
+    agradecimientos, emojis sueltos, spam o mensajes sin contexto se responden
+    (si conviene) pero NUNCA se guardan como lead.
     """
     tag = f"[{canal} DM]"
 
@@ -274,9 +332,25 @@ async def procesar_mensaje_social(proveedor, canal: str, sender_id: str, texto: 
 
     identificador = f"{canal}:{sender_id}"
     normalizado = _normalizar(texto)
-    calidad = clasificar_calidad_lead(texto)
     atencion_directa = _requiere_atencion_directa(normalizado)
+    intencion_comercial = atencion_directa or _tiene_intencion_comercial(normalizado)
+
+    await guardar_mensaje(identificador, "user", texto)
+
+    if not intencion_comercial:
+        respuesta = _respuesta_sin_intencion()
+        logger.info(f"{tag} mensaje sin intención comercial — no se guarda lead — sender={sender_id}")
+        await guardar_mensaje(identificador, "assistant", respuesta)
+        await _enviar_respuesta_dm(proveedor, canal, sender_id, respuesta)
+        return
+
+    calidad = clasificar_calidad_lead(texto)
+    if calidad == "frio":
+        # Tiene intención comercial detectada — no debe quedar clasificado como frío.
+        calidad = "medio"
+
     respuesta = _respuesta_corta_dm(texto)
+    await guardar_mensaje(identificador, "assistant", respuesta)
 
     logger.info(f"{tag} Clasificación de lead={_ESTADO_CALIDAD[calidad]} — sender={sender_id}")
     if atencion_directa:
@@ -284,29 +358,7 @@ async def procesar_mensaje_social(proveedor, canal: str, sender_id: str, texto: 
     else:
         logger.info(f"{tag} redirigiendo a WhatsApp — sender={sender_id}")
 
-    await guardar_mensaje(identificador, "user", texto)
-    await guardar_mensaje(identificador, "assistant", respuesta)
-
-    faltantes = _variables_faltantes(canal)
-    if faltantes:
-        logger.warning(
-            f"{tag} No se puede responder — variable(s) de entorno faltante(s) o vacía(s): "
-            f"{', '.join(faltantes)} (el lead se guarda igual)"
-        )
-
-    try:
-        enviado = await proveedor.enviar_mensaje(sender_id, respuesta)
-    except Exception as e:
-        logger.error(f"{tag} Error enviando respuesta: {e}")
-        enviado = False
-
-    if enviado:
-        logger.info(f"{tag} respuesta_enviada OK — sender={sender_id} — texto={respuesta!r}")
-    else:
-        logger.warning(
-            f"{tag} respuesta_enviada error — sender={sender_id} "
-            f"(revisa META_PAGE_ACCESS_TOKEN, META_PAGE_ID/META_INSTAGRAM_ACCOUNT_ID y permisos)"
-        )
+    await _enviar_respuesta_dm(proveedor, canal, sender_id, respuesta)
 
     datos_lead = _lead_dm_directo(canal, identificador, texto, calidad, atencion_directa)
     asyncio.create_task(_guardar_lead_social(datos_lead, contexto=f"{canal} DM"))
@@ -329,6 +381,9 @@ async def procesar_comentario_social(proveedor, canal: str, comentario_id: str, 
         return
 
     calidad = clasificar_calidad_lead(texto)
+    if calidad == "frio":
+        # Tiene intención comercial detectada — no debe quedar clasificado como frío.
+        calidad = "medio"
     mensaje_publico = random.choice(_RESPUESTAS_PUBLICAS_COMENTARIO)
     mensaje_privado = f"¡Claro! Te paso la info por WhatsApp para atenderte mejor: {_link_whatsapp()}"
 
@@ -358,8 +413,8 @@ async def procesar_comentario_social(proveedor, canal: str, comentario_id: str, 
     etiqueta = _CANAL_COMENTARIO.get(canal, canal)
     extracto = texto.strip()[:200]
     resumen = (
-        f"Canal: {etiqueta}. Comentó: \"{extracto}\". Acción: enviado a WhatsApp. "
-        f"Se respondió comentario y se envió DM si Meta lo permitió."
+        f"Canal: {etiqueta}. Comentó: \"{extracto}\". "
+        f"Se respondió comentario y se intentó enviar DM con WhatsApp."
     )
     datos_lead = {
         "telefono": f"{canal}-comment:{autor_id or comentario_id}",

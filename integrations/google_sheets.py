@@ -164,7 +164,7 @@ def aplicar_formato_sheet(ws) -> None:
             })
 
         # Estado: 7 valores con colores distintos
-        for idx, (valor, color) in enumerate([
+        estados_base = [
             ("Nuevo lead",           {"red": 0.80, "green": 0.95, "blue": 0.80}),
             ("En conversación",      {"red": 1.00, "green": 0.95, "blue": 0.70}),
             ("Interesado",           {"red": 0.90, "green": 0.85, "blue": 1.00}),
@@ -172,7 +172,15 @@ def aplicar_formato_sheet(ws) -> None:
             ("Cotización pendiente", {"red": 1.00, "green": 0.85, "blue": 0.65}),
             ("Cerrado",              {"red": 0.50, "green": 0.85, "blue": 0.50}),
             ("Perdido",              {"red": 1.00, "green": 0.75, "blue": 0.75}),
-        ]):
+        ]
+        # Calidad de lead (Instagram/Facebook) — reutiliza la columna "Estado" para no
+        # romper el formato existente. Verde/amarillo/rojo según nivel de interés.
+        estados_calidad_lead = [
+            ("Lead caliente", {"red": 0.40, "green": 0.80, "blue": 0.40}),
+            ("Lead medio",    {"red": 1.00, "green": 0.90, "blue": 0.55}),
+            ("Lead frío",     {"red": 1.00, "green": 0.70, "blue": 0.70}),
+        ]
+        for idx, (valor, color) in enumerate(estados_base + estados_calidad_lead):
             visual.append({
                 "addConditionalFormatRule": {
                     "rule": {

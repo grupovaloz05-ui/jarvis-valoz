@@ -69,3 +69,7 @@ class ProveedorWhatsApp(ABC):
     async def responder_comentario_privado(self, comentario_id: str, mensaje: str) -> bool:
         """Envía una respuesta privada (DM) a partir de un comentario. Implementación opcional; retorna False por defecto."""
         return False
+
+    async def responder_comentario_publico(self, comentario_id: str, mensaje: str) -> bool:
+        """Responde públicamente (reply) a un comentario. Implementación opcional; retorna False por defecto."""
+        return False

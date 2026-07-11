@@ -13,12 +13,21 @@ class ProveedorFacebookMessenger(ProveedorWhatsApp):
     """Proveedor de Facebook Messenger usando la Messenger Platform Send API de Meta."""
 
     def __init__(self):
-        self.access_token = os.getenv("META_PAGE_ACCESS_TOKEN")
-        self.page_id = os.getenv("META_PAGE_ID")
+        # .strip() para tratar valores vacíos o con solo espacios/saltos de línea como
+        # no configurados — evita que un token en blanco pase el check `if not token`.
+        self.access_token = (os.getenv("META_PAGE_ACCESS_TOKEN") or "").strip() or None
+        self.page_id = (os.getenv("META_PAGE_ID") or "").strip() or None
         self.api_version = "v21.0"
         if not self.access_token or not self.page_id:
+            faltantes = [
+                nombre for nombre, valor in (
+                    ("META_PAGE_ACCESS_TOKEN", self.access_token),
+                    ("META_PAGE_ID", self.page_id),
+                )
+                if not valor
+            ]
             logger.warning(
-                "META_PAGE_ACCESS_TOKEN o META_PAGE_ID no configurados — "
+                f"Variable(s) de entorno faltante(s) o vacía(s): {', '.join(faltantes)} — "
                 "Facebook Messenger no podrá enviar mensajes (los eventos entrantes no se "
                 "pierden, solo no se responden)"
             )
@@ -110,6 +119,28 @@ class ProveedorFacebookMessenger(ProveedorWhatsApp):
                 return True
             logger.error(
                 f"Error enviando private reply de Facebook ({comentario_id}): "
+                f"{r.status_code} — {r.text}"
+            )
+            return False
+
+    async def responder_comentario_publico(self, comentario_id: str, mensaje: str) -> bool:
+        """Responde públicamente (reply corto) a un comentario de la página de Facebook."""
+        if not self.access_token:
+            logger.warning("META_PAGE_ACCESS_TOKEN no configurado")
+            return False
+        url = f"https://graph.facebook.com/{self.api_version}/{comentario_id}/comments"
+        headers = {
+            "Authorization": f"Bearer {self.access_token}",
+            "Content-Type": "application/json",
+        }
+        payload = {"message": mensaje}
+        async with httpx.AsyncClient() as client:
+            r = await client.post(url, json=payload, headers=headers)
+            if r.status_code == 200:
+                logger.info(f"Respuesta pública de Facebook enviada para comentario {comentario_id}")
+                return True
+            logger.error(
+                f"Error enviando respuesta pública de Facebook ({comentario_id}): "
                 f"{r.status_code} — {r.text}"
             )
             return False

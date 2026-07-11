@@ -13,12 +13,21 @@ class ProveedorInstagram(ProveedorWhatsApp):
     """Proveedor de Instagram Direct Messages usando la Instagram Messaging API de Meta."""
 
     def __init__(self):
-        self.access_token = os.getenv("META_PAGE_ACCESS_TOKEN")
-        self.ig_account_id = os.getenv("META_INSTAGRAM_ACCOUNT_ID")
+        # .strip() para tratar valores vacíos o con solo espacios/saltos de línea como
+        # no configurados — evita que un token en blanco pase el check `if not token`.
+        self.access_token = (os.getenv("META_PAGE_ACCESS_TOKEN") or "").strip() or None
+        self.ig_account_id = (os.getenv("META_INSTAGRAM_ACCOUNT_ID") or "").strip() or None
         self.api_version = "v21.0"
         if not self.access_token or not self.ig_account_id:
+            faltantes = [
+                nombre for nombre, valor in (
+                    ("META_PAGE_ACCESS_TOKEN", self.access_token),
+                    ("META_INSTAGRAM_ACCOUNT_ID", self.ig_account_id),
+                )
+                if not valor
+            ]
             logger.warning(
-                "META_PAGE_ACCESS_TOKEN o META_INSTAGRAM_ACCOUNT_ID no configurados — "
+                f"Variable(s) de entorno faltante(s) o vacía(s): {', '.join(faltantes)} — "
                 "Instagram no podrá enviar mensajes (los eventos entrantes no se pierden, "
                 "solo no se responden)"
             )
@@ -105,6 +114,28 @@ class ProveedorInstagram(ProveedorWhatsApp):
                 return True
             logger.error(
                 f"Error enviando private reply de Instagram ({comentario_id}): "
+                f"{r.status_code} — {r.text}"
+            )
+            return False
+
+    async def responder_comentario_publico(self, comentario_id: str, mensaje: str) -> bool:
+        """Responde públicamente (reply corto) a un comentario de Instagram."""
+        if not self.access_token:
+            logger.warning("META_PAGE_ACCESS_TOKEN no configurado")
+            return False
+        url = f"https://graph.facebook.com/{self.api_version}/{comentario_id}/replies"
+        headers = {
+            "Authorization": f"Bearer {self.access_token}",
+            "Content-Type": "application/json",
+        }
+        payload = {"message": mensaje}
+        async with httpx.AsyncClient() as client:
+            r = await client.post(url, json=payload, headers=headers)
+            if r.status_code == 200:
+                logger.info(f"Respuesta pública de Instagram enviada para comentario {comentario_id}")
+                return True
+            logger.error(
+                f"Error enviando respuesta pública de Instagram ({comentario_id}): "
                 f"{r.status_code} — {r.text}"
             )
             return False

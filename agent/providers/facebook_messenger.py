@@ -4,7 +4,13 @@ import os
 import logging
 import httpx
 from fastapi import Request
-from agent.providers.base import ProveedorWhatsApp, MensajeEntrante, ComentarioEntrante
+from agent.providers.base import (
+    ProveedorWhatsApp,
+    MensajeEntrante,
+    ComentarioEntrante,
+    MetaCapabilityError,
+    _es_error_capability,
+)
 
 logger = logging.getLogger("agentkit")
 
@@ -92,6 +98,8 @@ class ProveedorFacebookMessenger(ProveedorWhatsApp):
             if r.status_code == 200:
                 logger.info(f"Mensaje de Facebook Messenger enviado correctamente a {telefono}")
                 return True
+            if _es_error_capability(r):
+                raise MetaCapabilityError(r.text)
             logger.error(
                 f"Error al enviar mensaje de Facebook Messenger a {telefono}: "
                 f"{r.status_code} — {r.text}"

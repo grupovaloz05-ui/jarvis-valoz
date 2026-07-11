@@ -6,6 +6,24 @@ from dataclasses import dataclass
 from fastapi import Request
 
 
+class MetaCapabilityError(Exception):
+    """
+    Meta respondió error (#3) "Application does not have the capability to make
+    this API call" — la app todavía no tiene habilitada la capacidad de enviar
+    mensajes en este canal (falta Messenger API for Instagram / permisos
+    avanzados en Meta). No es un error transitorio: no vale la pena reintentar.
+    """
+
+
+def _es_error_capability(response) -> bool:
+    """True si la respuesta de error de Meta es el (#3) capability error."""
+    try:
+        error = response.json().get("error", {})
+    except Exception:
+        return False
+    return error.get("code") == 3
+
+
 @dataclass
 class MensajeEntrante:
     """Mensaje normalizado — mismo formato sin importar el proveedor."""

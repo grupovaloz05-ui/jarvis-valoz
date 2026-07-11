@@ -24,6 +24,7 @@ import unicodedata
 from datetime import datetime
 
 from agent.memory import guardar_mensaje, obtener_historial
+from agent.providers.base import MetaCapabilityError
 from integrations.google_sheets import guardar_lead
 
 logger = logging.getLogger("agentkit")
@@ -257,16 +258,36 @@ async def _guardar_lead_social(datos: dict, contexto: str) -> None:
         logger.error(f"[{contexto}] Error guardando en Sheets: {e}")
 
 
-def _lead_dm_directo(canal: str, identificador: str, texto: str, calidad: str, atencion_directa: bool) -> dict:
+def _lead_dm_directo(
+    canal: str,
+    identificador: str,
+    texto: str,
+    calidad: str,
+    atencion_directa: bool,
+    error_capability: bool = False,
+) -> dict:
     """Construye el registro de lead para un DM sin llamar a Claude — lógica directa."""
     etiqueta = _CANAL_DM.get(canal, canal)
     extracto = texto.strip()[:200]
-    accion = (
-        f"Se atendió directamente en {_NOMBRE_CANAL.get(canal, canal)} (usuario no podía/quería usar WhatsApp o era urgente)."
-        if atencion_directa
-        else "Se envió link de WhatsApp."
-    )
-    resumen = f'Canal: {etiqueta}. Usuario escribió: "{extracto}". {accion}'
+
+    if error_capability:
+        # Meta no permitió enviar la respuesta automática (falta capability en la
+        # app) — el usuario nunca vio la redirección a WhatsApp, así que requiere
+        # seguimiento manual explícito en vez del próximo paso normal por calidad.
+        resumen = (
+            "Usuario mostró interés por Instagram/Facebook, pero Meta no permitió "
+            "respuesta automática. Requiere seguimiento manual."
+        )
+        proximo_paso = f"Revisar manualmente Instagram/Facebook y enviar WhatsApp: {_link_whatsapp()}"
+    else:
+        accion = (
+            f"Se atendió directamente en {_NOMBRE_CANAL.get(canal, canal)} (usuario no podía/quería usar WhatsApp o era urgente)."
+            if atencion_directa
+            else "Se envió link de WhatsApp."
+        )
+        resumen = f'Canal: {etiqueta}. Usuario escribió: "{extracto}". {accion}'
+        proximo_paso = f"Canal: {etiqueta} | Acción: {accion} | {_PROXIMO_PASO_CALIDAD[calidad]}"
+
     return {
         "telefono": identificador,
         "nombre": VALOR_VACIO,
@@ -277,13 +298,18 @@ def _lead_dm_directo(canal: str, identificador: str, texto: str, calidad: str, a
         "urgencia": _URGENCIA_CALIDAD[calidad],
         "resumen": resumen,
         "estado": _ESTADO_CALIDAD[calidad],
-        "proximo_paso": f"Canal: {etiqueta} | Acción: {accion} | {_PROXIMO_PASO_CALIDAD[calidad]}",
+        "proximo_paso": proximo_paso,
         "fecha": datetime.now().strftime("%Y-%m-%d %H:%M"),
     }
 
 
-async def _enviar_respuesta_dm(proveedor, canal: str, sender_id: str, respuesta: str) -> bool:
-    """Envía la respuesta de un DM y loguea cada paso (nunca lanza excepción hacia arriba)."""
+async def _enviar_respuesta_dm(proveedor, canal: str, sender_id: str, respuesta: str) -> tuple[bool, bool]:
+    """
+    Envía la respuesta de un DM y loguea cada paso (nunca lanza excepción hacia
+    arriba). Retorna (enviado, error_capability). Un solo intento por evento —
+    si Meta responde el error (#3) de capability no vale la pena reintentar
+    dentro del mismo evento, ya que no es un error transitorio.
+    """
     tag = f"[{canal} DM]"
     logger.info(f"{tag} respuesta_preparada={respuesta!r} — sender={sender_id}")
 
@@ -297,9 +323,15 @@ async def _enviar_respuesta_dm(proveedor, canal: str, sender_id: str, respuesta:
     logger.info(f"{tag} enviando respuesta... — sender={sender_id}")
     try:
         enviado = await proveedor.enviar_mensaje(sender_id, respuesta)
+    except MetaCapabilityError:
+        logger.error(
+            f"{tag} Meta no permite enviar mensajes todavía: falta habilitar Messenger API "
+            "for Instagram / permisos avanzados / capability en la app."
+        )
+        return False, True
     except Exception as e:
         logger.error(f"{tag} error enviando respuesta: {e}")
-        return False
+        return False, False
 
     if enviado:
         logger.info(f"{tag} respuesta enviada OK — sender={sender_id} — texto={respuesta!r}")
@@ -308,7 +340,7 @@ async def _enviar_respuesta_dm(proveedor, canal: str, sender_id: str, respuesta:
             f"{tag} respuesta enviada error — sender={sender_id} "
             f"(revisa META_PAGE_ACCESS_TOKEN, META_PAGE_ID/META_INSTAGRAM_ACCOUNT_ID y permisos)"
         )
-    return enviado
+    return enviado, False
 
 
 async def procesar_mensaje_social(proveedor, canal: str, sender_id: str, texto: str):
@@ -358,9 +390,9 @@ async def procesar_mensaje_social(proveedor, canal: str, sender_id: str, texto: 
     else:
         logger.info(f"{tag} redirigiendo a WhatsApp — sender={sender_id}")
 
-    await _enviar_respuesta_dm(proveedor, canal, sender_id, respuesta)
+    _, error_capability = await _enviar_respuesta_dm(proveedor, canal, sender_id, respuesta)
 
-    datos_lead = _lead_dm_directo(canal, identificador, texto, calidad, atencion_directa)
+    datos_lead = _lead_dm_directo(canal, identificador, texto, calidad, atencion_directa, error_capability)
     asyncio.create_task(_guardar_lead_social(datos_lead, contexto=f"{canal} DM"))
 
 

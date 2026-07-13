@@ -357,10 +357,16 @@ async def _manejar_webhook_social(object_type: str, request: Request):
         return
 
     if canal == "instagram" and not instagram_enabled():
-        logger.warning("Evento Instagram recibido pero INSTAGRAM_ENABLED=false")
+        logger.warning(
+            "Instagram/Facebook desactivado por estrategia comercial actual. "
+            "No se procesa evento. (INSTAGRAM_ENABLED=false)"
+        )
         return
     if canal == "facebook" and not facebook_messenger_enabled():
-        logger.warning("Evento Facebook recibido pero FACEBOOK_MESSENGER_ENABLED=false")
+        logger.warning(
+            "Instagram/Facebook desactivado por estrategia comercial actual. "
+            "No se procesa evento. (FACEBOOK_MESSENGER_ENABLED=false)"
+        )
         return
 
     proveedor_social = obtener_proveedor_instagram() if canal == "instagram" else obtener_proveedor_facebook()

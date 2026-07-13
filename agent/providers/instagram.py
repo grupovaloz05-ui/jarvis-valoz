@@ -1,4 +1,7 @@
 # agent/providers/instagram.py — Adaptador para Instagram Messaging (DMs y comentarios)
+#
+# Integración experimental. No se vende actualmente. Canal comercial principal:
+# WhatsApp. Solo se usa si INSTAGRAM_ENABLED=true en .env (ver agent/providers/__init__.py).
 
 import os
 import logging

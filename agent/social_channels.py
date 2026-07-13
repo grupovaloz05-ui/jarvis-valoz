@@ -1,5 +1,9 @@
 # agent/social_channels.py — Flujo compartido para Instagram DM y Facebook Messenger
 #
+# Integración Instagram/Facebook experimental. No se vende actualmente. Canal
+# comercial principal: WhatsApp. Solo se activa si INSTAGRAM_ENABLED /
+# FACEBOOK_MESSENGER_ENABLED están en "true" en .env (por defecto false).
+#
 # Estrategia comercial: Instagram y Facebook son canales de CAPTACIÓN, no de venta.
 # No usan a Claude — responden con lógica directa por palabras clave, clasifican el
 # lead (caliente/medio/frío) y siempre invitan a continuar por WhatsApp, que es el

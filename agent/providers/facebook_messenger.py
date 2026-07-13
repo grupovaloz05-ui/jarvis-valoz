@@ -1,4 +1,7 @@
 # agent/providers/facebook_messenger.py — Adaptador para Facebook Messenger (DMs y comentarios)
+#
+# Integración experimental. No se vende actualmente. Canal comercial principal:
+# WhatsApp. Solo se usa si FACEBOOK_MESSENGER_ENABLED=true en .env (ver agent/providers/__init__.py).
 
 import os
 import logging

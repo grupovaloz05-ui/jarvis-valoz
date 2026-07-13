@@ -94,3 +94,16 @@ promotion_settings:
   allow_image_promos: true
   current_promo_text_path: "knowledge/promociones.md"
   current_promo_image_path: "assets/promos/current_promo.jpg"
+
+# ─── Estrategia comercial de canales sociales ─────────────────
+# Documenta la estrategia comercial vigente: WhatsApp es el único canal que se
+# vende como automatización completa. Instagram y Facebook son experimentales y
+# solo sirven como captación manual hacia WhatsApp — no se venden como bot.
+#
+# El apagado/encendido REAL de Instagram/Facebook lo controlan las variables de
+# entorno INSTAGRAM_ENABLED y FACEBOOK_MESSENGER_ENABLED en .env (por defecto
+# "false" — ver .env.example y agent/providers/__init__.py). Estos campos son
+# documentación de la estrategia comercial, no un segundo interruptor técnico.
+social_channels_enabled: false
+instagram_facebook_sales_enabled: false
+main_sales_channel: whatsapp

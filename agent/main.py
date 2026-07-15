@@ -25,7 +25,8 @@ from agent.tools import obtener_y_limpiar_confirmadas
 from agent.client_loader import get_client_id, get_business_name, get_whatsapp_implementation_mode
 from agent.whatsapp_media import send_menu_image_if_requested
 from agent.promotions import manejar_mensaje_promocion
-from integrations.google_sheets import guardar_lead, esta_configurado as sheets_activo
+from agent.incoming_capture import detectar_codigo
+from integrations.google_sheets import guardar_lead, guardar_mensaje_entrante, esta_configurado as sheets_activo
 from integrations.google_calendar import crear_evento_cita, esta_configurado as calendar_activo
 
 load_dotenv()
@@ -394,6 +395,99 @@ async def _manejar_webhook_social(object_type: str, request: Request):
         await procesar_comentario_social(proveedor_social, canal, c.comentario_id, c.texto, c.autor_id)
 
 
+def _extraer_contactos_whatsapp(body: dict) -> dict[str, str]:
+    """Mapea telefono -> nombre de contacto desde el payload crudo de WhatsApp Cloud API."""
+    contactos: dict[str, str] = {}
+    for entry in body.get("entry", []) or []:
+        for change in entry.get("changes", []) or []:
+            value = change.get("value", {}) or {}
+            for contacto in value.get("contacts", []) or []:
+                wa_id = contacto.get("wa_id", "")
+                nombre = (contacto.get("profile") or {}).get("name", "")
+                if wa_id:
+                    contactos[wa_id] = nombre
+    return contactos
+
+
+def _texto_mensaje_crudo(msg: dict) -> str:
+    """Extrae un texto representativo de un mensaje crudo de WhatsApp, sea cual sea su tipo."""
+    tipo = msg.get("type", "unknown")
+    if tipo == "text":
+        return msg.get("text", {}).get("body", "") or ""
+    if tipo == "image":
+        return (msg.get("image", {}) or {}).get("caption", "") or ""
+    if tipo == "button":
+        return (msg.get("button", {}) or {}).get("text", "") or ""
+    if tipo == "interactive":
+        interactive = msg.get("interactive", {}) or {}
+        return (
+            (interactive.get("button_reply") or {}).get("title")
+            or (interactive.get("list_reply") or {}).get("title")
+            or ""
+        )
+    return ""
+
+
+async def _capturar_mensajes_entrantes_whatsapp(body: dict) -> set[str]:
+    """
+    Guarda TODO mensaje entrante de WhatsApp en Sheets (pestaña 'Mensajes Entrantes') antes
+    de que el bot lo procese, y detecta posibles códigos de verificación de Meta/Facebook/
+    WhatsApp — útiles para vincular el número a la cuenta de negocio correcta. Nunca lanza
+    excepción: un fallo aquí no debe romper el flujo normal del bot.
+
+    Retorna el conjunto de mensaje_id que parecen códigos de verificación, para excluirlos
+    del flujo normal del agente (no se responde automáticamente ni se envían a Claude).
+    """
+    ids_codigo: set[str] = set()
+
+    try:
+        contactos = _extraer_contactos_whatsapp(body)
+
+        for entry in body.get("entry", []) or []:
+            for change in entry.get("changes", []) or []:
+                value = change.get("value", {}) or {}
+                for msg in value.get("messages", []) or []:
+                    telefono = msg.get("from", "")
+                    mensaje_id = msg.get("id", "")
+                    tipo = msg.get("type", "unknown")
+                    texto = _texto_mensaje_crudo(msg)
+
+                    resultado = detectar_codigo(texto)
+
+                    if resultado["es_codigo"]:
+                        ids_codigo.add(mensaje_id)
+                        logger.warning(
+                            "\n==============================\n"
+                            "POSIBLE CÓDIGO DE VERIFICACIÓN RECIBIDO\n"
+                            f"Código: {resultado['codigo']}\n"
+                            f"Remitente: {telefono}\n"
+                            f"Texto: {texto}\n"
+                            "=============================="
+                        )
+
+                    datos = {
+                        "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "telefono": telefono,
+                        "nombre": contactos.get(telefono, ""),
+                        "tipo": tipo,
+                        "texto": texto,
+                        "mensaje_id": mensaje_id,
+                        "es_codigo": resultado["es_codigo"],
+                        "codigo": resultado["codigo"],
+                        "origen": resultado["origen"],
+                        "notas": resultado["notas"],
+                    }
+
+                    try:
+                        await guardar_mensaje_entrante(datos)
+                    except Exception as e:
+                        logger.error(f"Error guardando mensaje entrante en Sheets: {e}")
+    except Exception as e:
+        logger.error(f"Error en _capturar_mensajes_entrantes_whatsapp: {e}")
+
+    return ids_codigo
+
+
 @app.post("/webhook")
 async def webhook_handler(request: Request):
     """
@@ -413,10 +507,24 @@ async def webhook_handler(request: Request):
         if tipo == "unknown":
             logger.warning(f"[WEBHOOK] object desconocido/ausente: {object_type!r} — se intenta procesar como WhatsApp igualmente")
 
+        # Captura TODO mensaje entrante de WhatsApp en Sheets antes de procesarlo —
+        # necesario para ver códigos de verificación de Meta/Facebook/WhatsApp que
+        # lleguen al número del bot mientras está conectado a Cloud API.
+        ids_codigo_verificacion: set[str] = set()
+        if tipo == "whatsapp":
+            ids_codigo_verificacion = await _capturar_mensajes_entrantes_whatsapp(body)
+
         mensajes = await proveedor.parsear_webhook(request)
 
         for msg in mensajes:
             if msg.es_propio or not msg.texto:
+                continue
+
+            if msg.mensaje_id in ids_codigo_verificacion:
+                logger.info(
+                    f"Mensaje {msg.mensaje_id} de {msg.telefono} excluido del flujo del "
+                    f"agente — posible código de verificación"
+                )
                 continue
 
             logger.info(f"Mensaje de {msg.telefono}: {msg.texto}")

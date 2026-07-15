@@ -17,6 +17,14 @@ ENCABEZADOS = [
 
 ANCHOS_COLUMNAS = [160, 150, 120, 180, 150, 220, 110, 90, 340, 140, 220]
 
+NOMBRE_HOJA_MENSAJES = "Mensajes Entrantes"
+
+ENCABEZADOS_MENSAJES = [
+    "Fecha y hora", "Número del remitente", "Nombre del contacto", "Tipo de mensaje",
+    "Texto recibido", "ID del mensaje", "Es posible código", "Código detectado",
+    "Origen probable", "Notas",
+]
+
 
 def esta_configurado() -> bool:
     return bool(
@@ -264,3 +272,61 @@ async def guardar_lead(datos: dict) -> bool:
         logger.debug("Google Sheets no configurado — omitiendo guardado")
         return False
     return await asyncio.to_thread(_guardar_lead_sync, datos)
+
+
+def _obtener_o_crear_hoja_mensajes(spreadsheet):
+    """Devuelve la pestaña 'Mensajes Entrantes', creándola con encabezados si no existe."""
+    import gspread
+
+    try:
+        ws = spreadsheet.worksheet(NOMBRE_HOJA_MENSAJES)
+    except gspread.WorksheetNotFound:
+        ws = spreadsheet.add_worksheet(
+            title=NOMBRE_HOJA_MENSAJES, rows=1000, cols=len(ENCABEZADOS_MENSAJES)
+        )
+        ws.append_row(ENCABEZADOS_MENSAJES)
+        logger.info(f"Pestaña '{NOMBRE_HOJA_MENSAJES}' creada en Google Sheets")
+        return ws
+
+    if not ws.row_values(1):
+        ws.append_row(ENCABEZADOS_MENSAJES)
+
+    return ws
+
+
+def _guardar_mensaje_entrante_sync(datos: dict) -> bool:
+    telefono = datos.get("telefono", "desconocido")
+
+    try:
+        gc = _get_gc()
+        sh = gc.open_by_key(os.getenv("GOOGLE_SHEET_ID"))
+        ws = _obtener_o_crear_hoja_mensajes(sh)
+
+        fila = [
+            datos.get("fecha", datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+            telefono,
+            datos.get("nombre") or VALOR_VACIO,
+            datos.get("tipo", VALOR_VACIO),
+            datos.get("texto", ""),
+            datos.get("mensaje_id", ""),
+            "Sí" if datos.get("es_codigo") else "No",
+            datos.get("codigo") or "No",
+            datos.get("origen", ""),
+            datos.get("notas", ""),
+        ]
+
+        ws.append_row(fila)
+        logger.info(f"Mensaje entrante guardado en '{NOMBRE_HOJA_MENSAJES}': {telefono}")
+        return True
+
+    except Exception as e:
+        logger.error(f"Error al guardar mensaje entrante en Sheets: {e}")
+        return False
+
+
+async def guardar_mensaje_entrante(datos: dict) -> bool:
+    """Guarda un mensaje entrante crudo (cualquier tipo) en la pestaña 'Mensajes Entrantes'."""
+    if not esta_configurado():
+        logger.debug("Google Sheets no configurado — omitiendo guardado de mensaje entrante")
+        return False
+    return await asyncio.to_thread(_guardar_mensaje_entrante_sync, datos)
